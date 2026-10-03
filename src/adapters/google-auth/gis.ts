@@ -11,8 +11,12 @@ export const GOOGLE_SCOPES = [
   'openid',
   'email',
   'profile',
+  // Read the Campaign Tracker and write report sheets.
   'https://www.googleapis.com/auth/spreadsheets',
-  'https://www.googleapis.com/auth/drive.file',
+  // File new reports into the shared Results folder (drive.file cannot add files to a folder the app did not create).
+  // Approved by Taifur on 3 Oct 2026. Internal app: only cleverads.com.au accounts can sign in.
+  'https://www.googleapis.com/auth/drive',
+  // "Contact the developer" only; cannot read mail.
   'https://www.googleapis.com/auth/gmail.send',
 ] as const;
 

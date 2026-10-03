@@ -40,7 +40,7 @@ const rows = readDv360Csv(csv).rows;
 const config = acmModule.parseConfig({});
 const run = (isoDay: string) => {
   const [y, m, d] = isoDay.split('-').map(Number) as [number, number, number];
-  return acmModule.calculate({ rows, targets, firstSeen: new Map(), today: serialFromYmd(y, m, d) }, config);
+  return acmModule.calculate({ rows, targets, today: serialFromYmd(y, m, d) }, config);
 };
 const result = run(golden.today);
 

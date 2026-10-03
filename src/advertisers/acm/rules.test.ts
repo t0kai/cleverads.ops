@@ -37,7 +37,7 @@ describe('daysLeft (column S)', () => {
 });
 
 describe('calculateAcm edge cases', () => {
-  const base = { firstSeen: new Map<string, number | 'seed'>(), today: day(2) };
+  const base = { today: day(2) };
   it('a 2nd without its main gets a comment and no target', () => {
     const r = calculateAcm(
       { ...base, rows: [{ name: 'X 2nd', impressions: 100, clicks: 1, cost: 1, objective: '', status: '' }], targets: new Map() },
@@ -46,7 +46,7 @@ describe('calculateAcm edge cases', () => {
     expect(r.rows[0]?.comment).toBe('Main campaign not in CSV – target not calculated');
     expect(r.rows[0]?.targetedClicks).toBeNull();
   });
-  it('a 2nd uses the day it was first seen as its start', () => {
+  it('a 2nd starts on the main campaign start date, even if the tracker has its own start', () => {
     const r = calculateAcm(
       {
         ...base,
@@ -54,12 +54,14 @@ describe('calculateAcm edge cases', () => {
           { name: 'A', impressions: 1000, clicks: 10, cost: 1, objective: '', status: '' },
           { name: 'A 2nd', impressions: 1000, clicks: 10, cost: 1, objective: '', status: '' },
         ],
-        targets: new Map([['a', { start: day(1), end: day(30), clicks: 100 }]]),
-        firstSeen: new Map([['a 2nd', day(2)]]),
+        targets: new Map([
+          ['a', { start: day(1), end: day(30), clicks: 100 }],
+          ['a 2nd', { start: day(5), end: null, clicks: null }],
+        ]),
       },
       ACM_DEFAULTS,
     );
-    expect(r.rows[1]?.start).toBe(day(2));
+    expect(r.rows[1]?.start).toBe(day(1));
     expect(r.rows[1]?.end).toBe(day(30));
     expect(r.rows[1]?.targetedClicks).toBe(100); // 110 − 10
   });

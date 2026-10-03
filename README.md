@@ -48,7 +48,8 @@ enable Google Sheets API, Google Drive API and Gmail API; OAuth consent screen *
 create an OAuth Client ID (Web application) with origins `http://localhost:3000` and the Vercel URL.
 Only the Client ID goes into `NEXT_PUBLIC_GOOGLE_CLIENT_ID`. No client secret is used.
 
-Scopes requested at sign-in: `openid email profile`, `spreadsheets`, `drive.file` (only files this app creates),
+Scopes requested at sign-in: `openid email profile`, `spreadsheets`, `drive` (to file each report into the shared Results folder;
+the app is Internal, so only cleverads.com.au accounts can sign in),
 `gmail.send` (only for "Contact the developer"; cannot read mail).
 
 ## How the code is organised
@@ -95,8 +96,15 @@ Fonts (IBM Plex, SIL Open Font License) are served from this site, so no request
 
 ## Status
 
-Done (phase 2 + 4): project, sign-in flow, Home with clock, Advertisers, report upload and checks, History, User guide with
-Contact the developer, ACM engine with golden test (all 49 rows of the 2 Oct report match, Urgent 28 rows / Margin Issue 33 rows).
+Done: project, sign-in, Home with clock, Advertisers, History, User guide with Contact the developer, ACM engine with golden test,
+and **Build optimization sheet** for ACM:
 
-Next: Google Cloud setup with Taifur → read targets from the ACM sheet → write the Report/Urgent/Margin Issue/Formula tabs
-(`advertisers/acm/sheet.ts` already holds every formula) → Hub Data sheet (advertisers, ad types, history, messages) → downloads.
+1. Reads Campaign name / Start date / End date / Clicks Target from the Campaign Tracker (`ACM` tab, header row 5).
+2. A 2nd/3rd IO starts on its main campaign's start date and ends with it (unless the tracker gives it its own end date).
+3. Calculates, then creates `ACM Optimization Report - yyyy-mm-dd` (Asia/Dhaka) with Report (live formulas), Urgent,
+   Margin Issue and Formula (copied from the template) tabs, same formats and highlights as the Apps Script.
+4. Shows the result with Open in Google Sheets and XLSX / PDF / CSV downloads.
+
+Where each advertiser's files live (tracker, template, Results folder): `src/content/advertisers.ts`.
+
+Next: Hub Data sheet (advertisers, ad types, run history) → Settings → the other advertisers.

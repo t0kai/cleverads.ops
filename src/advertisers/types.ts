@@ -12,11 +12,6 @@ export interface ModuleInput {
   readonly rows: readonly Dv360Row[];
   /** Keyed by normalizeKey(campaign name). */
   readonly targets: ReadonlyMap<string, TargetRow>;
-  /**
-   * First day each 2nd/3rd IO was seen (serial), keyed by normalizeKey(full name).
-   * "seed" = it already existed on the very first run, so it uses the main IO's start date.
-   */
-  readonly firstSeen: ReadonlyMap<string, number | 'seed'>;
   /** TODAY() in the report's time zone, as a whole-day serial. */
   readonly today: number;
 }

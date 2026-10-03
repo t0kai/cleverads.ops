@@ -109,7 +109,7 @@ export function calculateAcm(input: ModuleInput, config: AcmConfig): AcmResult {
   for (const g of groups) {
     const parent = input.targets.get(g.key) ?? EMPTY_TARGET;
     if (g.hasMain && parent.clicks == null) {
-      warnings.push(`No click target in the target sheet for "${g.members[0]?.item.name ?? g.key}".`);
+      warnings.push(`No click target in the Campaign Tracker for "${g.members[0]?.item.name ?? g.key}".`);
     }
 
     // Columns B–D and the flags, as in buildRows_() of the Apps Script.
@@ -124,8 +124,9 @@ export function calculateAcm(input: ModuleInput, config: AcmConfig): AcmResult {
         end = parent.end;
         total = parent.clicks;
       } else {
-        const seen = input.firstSeen.get(normalizeKey(m.item.name));
-        start = own.start ?? (typeof seen === 'number' ? seen : null) ?? parent.start;
+        // A 2nd/3rd IO starts on the main campaign's start date (decided 3 Oct 2026) and ends with it,
+        // unless the tracker has its own end date.
+        start = parent.start;
         end = own.end ?? parent.end;
         total = null;
       }

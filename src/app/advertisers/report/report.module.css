@@ -94,3 +94,172 @@
   margin: 0;
   font-family: var(--font-mono);
 }
+
+/* Upload complete: a soft green card, a badge that pops in and a tick that draws itself once. */
+.success {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1px solid #bfe3cc;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #f4fbf7 0%, #e9f7ef 100%);
+  box-shadow: 0 6px 18px rgba(21, 115, 71, 0.08);
+  animation: success-in 0.42s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.successTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ok-ink);
+}
+.successMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  font-size: 13px;
+  color: var(--muted);
+  min-width: 0;
+}
+.successMeta :global(.mono) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.badge {
+  position: relative;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(145deg, #22a35f 0%, #157347 100%);
+  box-shadow: 0 6px 14px rgba(21, 115, 71, 0.3);
+  animation: badge-pop 0.5s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+.badge::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 2px solid rgba(34, 163, 95, 0.55);
+  opacity: 0;
+  animation: badge-ring 0.9s ease-out 0.15s;
+}
+.badgeTick {
+  stroke-dasharray: 24;
+  stroke-dashoffset: 0;
+  animation: tick-draw 0.45s ease-out 0.12s backwards;
+}
+@keyframes success-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+}
+@keyframes badge-pop {
+  from {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+}
+@keyframes badge-ring {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.7);
+  }
+}
+@keyframes tick-draw {
+  from {
+    stroke-dashoffset: 24;
+  }
+}
+
+/* Build progress */
+.progress {
+  margin: 0;
+  padding: 14px 16px;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--tint);
+  font-size: 14px;
+}
+.progress li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: color 0.2s ease;
+}
+.progressTodo {
+  color: var(--muted);
+}
+.stepIcon {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.stepDone {
+  background: #22a35f;
+  animation: badge-pop 0.35s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+.stepActive {
+  border: 2.5px solid #c9d3f7;
+  border-top-color: var(--brand);
+  animation: spin 0.8s linear infinite;
+}
+.stepTodo {
+  border: 2px solid #d5d9e1;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Result */
+.resultCard {
+  border-color: #bfe3cc;
+  animation: success-in 0.42s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.resultHead {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.resultActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.downloads {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.more summary {
+  cursor: pointer;
+  font-weight: 500;
+  margin-top: 2px;
+}
+.more summary:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
