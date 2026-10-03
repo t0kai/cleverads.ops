@@ -1,0 +1,141 @@
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.heroWrap {
+  position: relative;
+}
+.hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 20px;
+  padding: 36px 36px 32px;
+  background: linear-gradient(135deg, #2447d6 0%, #4b4fe0 45%, #6c5ce7 100%);
+  color: #fff;
+  box-shadow: 0 20px 44px rgba(36, 71, 214, 0.28);
+}
+.heroBlob {
+  position: absolute;
+  border-radius: 999px;
+  pointer-events: none;
+  animation: hub-drift 14s ease-in-out infinite;
+}
+.heroText {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 600px;
+  padding-top: 4px;
+}
+.greet {
+  font-size: 14px;
+  color: #dce3ff;
+}
+.title {
+  font-size: 30px;
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.lead {
+  font-size: 15px;
+  line-height: 1.6;
+  color: #e8ecff;
+}
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.section {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+.tile {
+  padding: 22px;
+  border-radius: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  color: var(--ink);
+  text-decoration: none;
+  animation: hub-bob 5s ease-in-out infinite;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.tile:hover {
+  animation-play-state: paused;
+  transform: translateY(-6px);
+  box-shadow: 0 20px 40px rgba(36, 71, 214, 0.2);
+}
+.tileIcon {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.tileTitle {
+  font-size: 16px;
+  font-weight: 600;
+}
+.tileText {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.tileLink {
+  font-size: 13px;
+  font-weight: 600;
+}
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+}
+.statCard {
+  padding: 16px 18px;
+}
+.soon {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1.5px dashed #cbd3e6;
+  background: rgba(255, 255, 255, 0.6);
+}
+.soonTag {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #eef1f6;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex: none;
+}

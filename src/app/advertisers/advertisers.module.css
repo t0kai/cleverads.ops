@@ -1,0 +1,60 @@
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.table {
+  overflow-x: auto;
+}
+.inner {
+  min-width: 720px;
+}
+.head,
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1.2fr) 170px 170px;
+  gap: 16px;
+  padding: 14px 20px;
+  align-items: center;
+}
+.head {
+  padding: 12px 20px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #4a5160;
+  border-bottom: 1px solid var(--line);
+  background: var(--tint);
+}
+.row {
+  font-size: 14px;
+  border-bottom: 1px solid var(--line-soft);
+  transition: background-color 0.14s ease;
+}
+.row:hover {
+  background: #f8faff;
+}
+.name {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 600;
+}
+.initials {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: #f1f2f4;
+  color: var(--ink-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 13px;
+  flex: none;
+}
+.actions {
+  display: flex;
+  justify-content: flex-end;
+}

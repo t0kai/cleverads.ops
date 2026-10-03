@@ -1,0 +1,135 @@
+/* CleverAds Operations — design tokens and base styles (matches the approved mockup). */
+:root {
+  --brand: #2447d6;
+  --brand-strong: #1a35a8;
+  --brand-violet: #6c5ce7;
+  --brand-gradient: linear-gradient(135deg, #2447d6 0%, #6c5ce7 100%);
+  --btn-gradient: linear-gradient(180deg, #3558f0 0%, #2242cc 100%);
+  --ink: #111318;
+  --ink-2: #3a3f47;
+  --muted: #5b616b;
+  --line: #e2e7f0;
+  --line-soft: #f0f1f3;
+  --input-line: #cdd1d7;
+  --bg: #f3f5fa;
+  --tint: #f6f8fe;
+  --tint-brand: #eef1fd;
+  --ok: #157347;
+  --ok-ink: #115c38;
+  --ok-bg: #e7f5ec;
+  --warn: #a15c07;
+  --warn-ink: #7a4304;
+  --warn-bg: #fff4e5;
+  --bad: #b42318;
+  --bad-bg: #fdf1ef;
+  --sheets: linear-gradient(135deg, #1e8e3e 0%, #137333 100%);
+  --radius: 16px;
+  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04), 0 8px 24px rgba(36, 71, 214, 0.06);
+  --shadow-btn: 0 4px 12px rgba(36, 71, 214, 0.28);
+  --font-sans: var(--font-plex-sans), system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, 'SF Mono', Menlo, monospace;
+  color-scheme: light;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--brand);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+
+p {
+  margin: 0;
+  text-wrap: pretty;
+}
+
+:focus-visible {
+  outline: 3px solid rgba(36, 71, 214, 0.35);
+  outline-offset: 2px;
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@keyframes hub-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+@keyframes hub-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+@keyframes hub-ring {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 300% 50%;
+  }
+}
+@keyframes hub-drift {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(36px, 24px) scale(1.08);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

@@ -1,0 +1,127 @@
+.wrap {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+.face {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  padding: 12px 16px 10px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.14);
+  box-shadow: 0 10px 26px rgba(16, 24, 80, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  color: #fff;
+  cursor: pointer;
+  min-width: 188px;
+  backdrop-filter: blur(8px);
+  transition: transform 0.16s ease, background-color 0.16s ease, box-shadow 0.16s ease;
+}
+.face:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.22);
+}
+.time {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+}
+.hm {
+  font-size: 28px;
+  font-weight: 500;
+  line-height: 1;
+}
+.sec {
+  font-size: 13px;
+  color: #dce3ff;
+}
+.ampm {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  color: #dce3ff;
+}
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #e8ecff;
+  white-space: nowrap;
+}
+.live {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #7df0b4;
+  box-shadow: 0 0 8px #7df0b4;
+}
+.menu {
+  width: 240px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 6px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid var(--line);
+  box-shadow: 0 18px 40px rgba(16, 24, 40, 0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--ink);
+}
+.menuTitle {
+  padding: 8px 10px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.zone {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+  white-space: nowrap;
+}
+.zone:hover {
+  background: var(--tint);
+}
+.zoneOn {
+  background: var(--tint-brand);
+  color: var(--brand-strong);
+  font-weight: 600;
+}
+.zoneTime {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--muted);
+}
+.reset {
+  margin-top: 4px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px dashed #c7d2fe;
+  background: #fff;
+  color: var(--brand-strong);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}

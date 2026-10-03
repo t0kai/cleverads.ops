@@ -1,0 +1,1415 @@
+{
+  "note": "Anonymised from the ACM report of 2 Oct 2026 (names and IDs replaced, numbers unchanged). Percentages and U/V are the sheet's displayed values (2 decimals). targets hold the Campaign Tracker dates; the tracker is in Australia/Sydney and the report in Asia/Dhaka, so the report holds them as date-times (5 Sep 00:00 Sydney = 4 Sep 20:00 Dhaka).",
+  "today": "2026-10-02",
+  "targets": {
+    "Campaign 01 - 9000001": {
+      "start": "05/09/2026",
+      "end": "23/10/2026",
+      "clicks": 250
+    },
+    "Campaign 02 - 9000002": {
+      "start": "24/09/2026",
+      "end": "21/10/2026",
+      "clicks": 500
+    },
+    "Campaign 03, Sydney - 9000003": {
+      "start": "15/09/2026",
+      "end": "26/10/2026",
+      "clicks": 250
+    },
+    "Campaign 04 - 9000004": {
+      "start": "31/08/2026",
+      "end": "08/10/2026",
+      "clicks": 2000
+    },
+    "Campaign 05 - 9000005": {
+      "start": "11/09/2026",
+      "end": "08/10/2026",
+      "clicks": 500
+    },
+    "Campaign 06 - 9000006": {
+      "start": "04/09/2026",
+      "end": "15/10/2026",
+      "clicks": 1000
+    },
+    "Campaign 07 - 9000007": {
+      "start": "01/10/2026",
+      "end": "31/10/2026",
+      "clicks": 250
+    },
+    "Campaign 08 - 9000008": {
+      "start": "01/09/2026",
+      "end": "13/10/2026",
+      "clicks": 750
+    },
+    "Campaign 09 - 9000009": {
+      "start": "22/09/2026",
+      "end": "19/10/2026",
+      "clicks": 500
+    },
+    "Campaign 10 - 9000010": {
+      "start": "15/09/2026",
+      "end": "26/10/2026",
+      "clicks": 250
+    },
+    "Campaign 11 - 9000011": {
+      "start": "25/09/2026",
+      "end": "25/10/2026",
+      "clicks": 2000
+    },
+    "Campaign 12 - 9000012": {
+      "start": "16/09/2026",
+      "end": "13/10/2026",
+      "clicks": 500
+    },
+    "Campaign 13 - 9000013": {
+      "start": "15/09/2026",
+      "end": "09/10/2026",
+      "clicks": 500
+    },
+    "Campaign 14 - 9000014": {
+      "start": "15/09/2026",
+      "end": "26/10/2026",
+      "clicks": 250
+    },
+    "Campaign 15 - 9000015": {
+      "start": "30/09/2026",
+      "end": "30/10/2026",
+      "clicks": 250
+    },
+    "Campaign 16 - 9000016": {
+      "start": "15/09/2026",
+      "end": "12/10/2026",
+      "clicks": 500
+    },
+    "Campaign 17 - 9000017": {
+      "start": "08/09/2026",
+      "end": "19/10/2026",
+      "clicks": 500
+    },
+    "Campaign 18 - 9000018": {
+      "start": "28/08/2026",
+      "end": "07/10/2026",
+      "clicks": 1000
+    },
+    "Campaign 19 - 9000019": {
+      "start": "02/10/2026",
+      "end": "02/11/2026",
+      "clicks": 300
+    },
+    "Campaign 20 - 9000020": {
+      "start": "11/09/2026",
+      "end": "08/10/2026",
+      "clicks": 500
+    },
+    "Campaign 21 - 9000021": {
+      "start": "01/09/2026",
+      "end": "12/10/2026",
+      "clicks": 500
+    },
+    "Campaign 22 - 9000022": {
+      "start": "01/09/2026",
+      "end": "12/10/2026",
+      "clicks": 500
+    },
+    "Campaign 23 - 9000023": {
+      "start": "31/08/2026",
+      "end": "08/10/2026",
+      "clicks": 500
+    },
+    "Campaign 24 - 9000024": {
+      "start": "02/10/2026",
+      "end": "31/10/2026",
+      "clicks": 250
+    },
+    "Campaign 25 - 9000025": {
+      "start": "11/09/2026",
+      "end": "08/10/2026",
+      "clicks": 250
+    },
+    "Campaign 26 - 9000026": {
+      "start": "29/09/2026",
+      "end": "29/10/2026",
+      "clicks": 300
+    },
+    "Campaign 27 - 9000027": {
+      "start": "16/09/2026",
+      "end": "13/10/2026",
+      "clicks": 500
+    },
+    "Campaign 28 - 9000028": {
+      "start": "01/10/2026",
+      "end": "31/10/2026",
+      "clicks": 300
+    },
+    "Campaign 29 - 9000029": {
+      "start": "01/10/2026",
+      "end": "31/10/2026",
+      "clicks": 200
+    },
+    "Campaign 30 - 9000030": {
+      "start": "01/10/2026",
+      "end": "01/10/2026",
+      "clicks": 250
+    },
+    "Campaign 31 - 9000031": {
+      "start": "25/09/2026",
+      "end": "25/10/2026",
+      "clicks": 250
+    },
+    "Campaign 32 - 9000032": {
+      "start": "24/09/2026",
+      "end": "20/10/2026",
+      "clicks": 500
+    },
+    "Campaign 33 - 9000033": {
+      "start": "29/09/2026",
+      "end": "29/10/2026",
+      "clicks": 250
+    },
+    "Campaign 34 - 9000034": {
+      "start": "04/09/2026",
+      "end": "15/10/2026",
+      "clicks": 1000
+    },
+    "Campaign 35 - 9000035": {
+      "start": "31/08/2026",
+      "end": "08/10/2026",
+      "clicks": 1000
+    },
+    "Campaign 36 - 9000036": {
+      "start": "08/09/2026",
+      "end": "19/10/2026",
+      "clicks": 500
+    },
+    "Campaign 37 - 9000037": {
+      "start": "04/09/2026",
+      "end": "15/10/2026",
+      "clicks": 2000
+    },
+    "Campaign 38 - 9000038": {
+      "start": "31/08/2026",
+      "end": "08/10/2026",
+      "clicks": 2000
+    }
+  },
+  "expected": [
+    {
+      "name": "Campaign 01 - 9000001",
+      "totalClicks": 250.0,
+      "targetedClicks": 275.0,
+      "achievedClicks": 247.0,
+      "requiredClicks": 28.0,
+      "ctr": 0.0156,
+      "impressions": 15875.0,
+      "impressionsNeeded": 1800.0,
+      "impressionsTotal": 17675.0,
+      "mediaCost": 12.25,
+      "fsFee": 1.8375,
+      "novaFee": 14.14,
+      "budget": 150.0,
+      "netProfit": 121.7725,
+      "margin": 0.8118,
+      "health": null,
+      "projectedMediaCost": 13.64,
+      "projectedNetProfit": 120.18,
+      "projectedMargin": 0.8012
+    },
+    {
+      "name": "Campaign 02 - 9000002",
+      "totalClicks": 500.0,
+      "targetedClicks": 550.0,
+      "achievedClicks": 91.0,
+      "requiredClicks": 459.0,
+      "ctr": 0.0091,
+      "impressions": 10028.0,
+      "impressionsNeeded": 50581.0,
+      "impressionsTotal": 60609.0,
+      "mediaCost": 8.88,
+      "fsFee": 1.332,
+      "novaFee": 48.4872,
+      "budget": 300.0,
+      "netProfit": 241.3008,
+      "margin": 0.8043,
+      "health": null,
+      "projectedMediaCost": 53.67,
+      "projectedNetProfit": 189.79,
+      "projectedMargin": 0.6326
+    },
+    {
+      "name": "Campaign 03, Sydney - 9000003",
+      "totalClicks": 250.0,
+      "targetedClicks": 275.0,
+      "achievedClicks": 81.0,
+      "requiredClicks": 194.0,
+      "ctr": 0.0091,
+      "impressions": 8934.0,
+      "impressionsNeeded": 21397.0,
+      "impressionsTotal": 30331.0,
+      "mediaCost": 8.3,
+      "fsFee": 1.245,
+      "novaFee": 24.2648,
+      "budget": 150.0,
+      "netProfit": 116.1902,
+      "margin": 0.7746,
+      "health": null,
+      "projectedMediaCost": 28.18,
+      "projectedNetProfit": 93.33,
+      "projectedMargin": 0.6222
+    },
+    {
+      "name": "Campaign 04 - 9000004",
+      "totalClicks": 2000.0,
+      "targetedClicks": 2200.0,
+      "achievedClicks": 1147.0,
+      "requiredClicks": 0.0,
+      "ctr": 0.0129,
+      "impressions": 89124.0,
+      "impressionsNeeded": 0.0,
+      "impressionsTotal": 89124.0,
+      "mediaCost": 78.24,
+      "fsFee": 11.736,
+      "novaFee": 71.2992,
+      "budget": 1200.0,
+      "netProfit": 934.7827,
+      "margin": 0.779,
+      "health": "▶ Running with 2nd",
+      "projectedMediaCost": 78.24,
+      "projectedNetProfit": 837.61,
+      "projectedMargin": 0.698
+    },
+    {
+      "name": "Campaign 04 - 9000004 2nd",
+      "totalClicks": null,
+      "targetedClicks": 1053.0,
+      "achievedClicks": 178.0,
+      "requiredClicks": 875.0,
+      "ctr": 0.01,
+      "impressions": 17786.0,
+      "impressionsNeeded": 87431.0,
+      "impressionsTotal": 105217.0,
+      "mediaCost": 17.19,
+      "fsFee": 2.5785,
+      "novaFee": 84.1736,
+      "budget": null,
+      "netProfit": null,
+      "margin": null,
+      "health": null,
+      "projectedMediaCost": 101.69
+    },
+    {
+      "name": "Campaign 05 - 9000005",
+      "totalClicks": 500.0,
+      "targetedClicks": 550.0,
+      "achievedClicks": 366.0,
+      "requiredClicks": 0.0,
+      "ctr": 0.009,
+      "impressions": 40468.0,
+      "impressionsNeeded": 0.0,
+      "impressionsTotal": 40468.0,
+      "mediaCost": 40.89,
+      "fsFee": 6.1335,
+      "novaFee": 32.3744,
+      "budget": 300.0,
+      "netProfit": 177.6544,
+      "margin": 0.5922,
+      "health": "▶ Running with 2nd",
+      "projectedMediaCost": 40.89,
+      "projectedNetProfit": 156.23,
+      "projectedMargin": 0.5208
+    },
+    {
+      "name": "Campaign 05 - 9000005 2nd",
+      "totalClicks": null,
+      "targetedClicks": 184.0,
+      "achievedClicks": 76.0,
+      "requiredClicks": 108.0,
+      "ctr": 0.0053,
+      "impressions": 14390.0,
+      "impressionsNeeded": 20449.0,
+      "impressionsTotal": 34839.0,
+      "mediaCost": 13.11,
+      "fsFee": 1.9665,
+      "novaFee": 27.8712,
+      "budget": null,
+      "netProfit": null,
+      "margin": null,
+      "health": null,
+      "projectedMediaCost": 31.74
+    },
+    {
+      "name": "Campaign 06 - 9000006",
+      "totalClicks": 1000.0,
+      "targetedClicks": 1100.0,
+      "achievedClicks": 285.0,
+      "requiredClicks": 0.0,
+      "ctr": 0.0119,
+      "impressions": 23992.0,
+      "impressionsNeeded": 0.0,
+      "impressionsTotal": 23992.0,
+      "mediaCost": 19.39,
+      "fsFee": 2.9085,
+      "novaFee": 19.1936,
+      "budget": 600.0,
+      "netProfit": 471.2541,
+      "margin": 0.7854,
+      "health": "▶ Running with 2nd",
+      "projectedMediaCost": 19.39,
+      "projectedNetProfit": 421.83,
+      "projectedMargin": 0.7031
+    },
+    {
+      "name": "Campaign 06 - 9000006 2nd",
+      "totalClicks": null,
+      "targetedClicks": 815.0,
+      "achievedClicks": 295.0,
+      "requiredClicks": 520.0,
+      "ctr": 0.011,
+      "impressions": 26793.0,
+      "impressionsNeeded": 47228.0,
+      "impressionsTotal": 74021.0,
+      "mediaCost": 24.38,
+      "fsFee": 3.657,
+      "novaFee": 59.2168,
+      "budget": null,
+      "netProfit": null,
+      "margin": null,
+      "health": null,
+      "projectedMediaCost": 67.35
+    },
+    {
+      "name": "Campaign 07 - 9000007",
+      "totalClicks": 250.0,
+      "targetedClicks": 275.0,
+      "achievedClicks": 5.0,
+      "requiredClicks": 270.0,
+      "ctr": 0.0125,
+      "impressions": 400.0,
+      "impressionsNeeded": 21600.0,
+      "impressionsTotal": 22000.0,
+      "mediaCost": 0.42,
+      "fsFee": 0.063,
+      "novaFee": 17.6,
+      "budget": 150.0,
+      "netProfit": 131.917,
+      "margin": 0.8794,
+      "health": null,
+      "projectedMediaCost": 23.1,
+      "projectedNetProfit": 105.84,
+      "projectedMargin": 0.7056
+    },
+    {
+      "name": "Campaign 08 - 9000008",
+      "totalClicks": 750.0,
+      "targetedClicks": 825.0,
+      "achievedClicks": 350.0,
+      "requiredClicks": 475.0,
+      "ctr": 0.0111,
+      "impressions": 31463.0,
+      "impressionsNeeded": 42700.0,
+      "impressionsTotal": 74163.0,
+      "mediaCost": 26.32,
+      "fsFee": 3.948,
+      "novaFee": 59.3304,
+      "budget": 450.0,
+      "netProfit": 360.4016,
+      "margin": 0.8009,
+      "health": null,
+      "projectedMediaCost": 62.04,
+      "projectedNetProfit": 319.32,
+      "projectedMargin": 0.7096
+    },
+    {
+      "name": "Campaign 09 - 9000009",
+      "totalClicks": 500.0,
+      "targetedClicks": 550.0,
+      "achievedClicks": 109.0,
+      "requiredClicks": 441.0,
+      "ctr": 0.0099,
+      "impressions": 11050.0,
+      "impressionsNeeded": 44707.0,
+      "impressionsTotal": 55757.0,
+      "mediaCost": 10.12,
+      "fsFee": 1.518,
+      "novaFee": 44.6056,
+      "budget": 300.0,
+      "netProfit": 243.7564,
+      "margin": 0.8125,
+      "health": null,
+      "projectedMediaCost": 51.06,
+      "projectedNetProfit": 196.67,
+      "projectedMargin": 0.6556
+    },
+    {
+      "name": "Campaign 10 - 9000010",
+      "totalClicks": 250.0,
+      "targetedClicks": 275.0,
+      "achievedClicks": 84.0,
+      "requiredClicks": 191.0,
+      "ctr": 0.0171,
+      "impressions": 4924.0,
+      "impressionsNeeded": 11196.0,
+      "impressionsTotal": 16120.0,
+      "mediaCost": 4.47,
+      "fsFee": 0.6705,
+      "novaFee": 12.896,
+      "budget": 150.0,
+      "netProfit": 131.9635,
+      "margin": 0.8798,
+      "health": null,
+      "projectedMediaCost": 14.63,
+      "projectedNetProfit": 120.28,
+      "projectedMargin": 0.8018
+    },
+    {
+      "name": "Campaign 11 - 9000011",
+      "totalClicks": 2000.0,
+      "targetedClicks": 2200.0,
+      "achievedClicks": 67.0,
+      "requiredClicks": 0.0,
+      "ctr": 0.0094,
+      "impressions": 7095.0,
+      "impressionsNeeded": 0.0,
+      "impressionsTotal": 7095.0,
+      "mediaCost": 6.58,
+      "fsFee": 0.987,
+      "novaFee": 5.676,
+      "budget": 1200.0,
+      "netProfit": 1054.0427,
+      "margin": 0.8784,
+      "health": "▶ Running with 2nd",
+      "projectedMediaCost": 6.58,
+      "projectedNetProfit": 893.94,
+      "projectedMargin": 0.745
+    },
+    {
+      "name": "Campaign 11 - 9000011 2nd",
+      "totalClicks": null,
+      "targetedClicks": 2133.0,
+      "achievedClicks": 110.0,
+      "requiredClicks": 2023.0,
+      "ctr": 0.0138,
+      "impressions": 7994.0,
+      "impressionsNeeded": 147017.0,
+      "impressionsTotal": 155011.0,
+      "mediaCost": 7.57,
+      "fsFee": 1.1355,
+      "novaFee": 124.0088,
+      "budget": null,
+      "netProfit": null,
+      "margin": null,
+      "health": null,
+      "projectedMediaCost": 146.79
+    },
+    {
+      "name": "Campaign 12 - 9000012",
+      "totalClicks": 500.0,
+      "targetedClicks": 550.0,
+      "achievedClicks": 110.0,
+      "requiredClicks": 0.0,
+      "ctr": 0.0055,
+      "impressions": 20104.0,
+      "impressionsNeeded": 0.0,
+      "impressionsTotal": 20104.0,
+      "mediaCost": 18.95,
+      "fsFee": 2.8425,
+      "novaFee": 16.0832,
+      "budget": 300.0,
+      "netProfit": 193.0128,
+      "margin": 0.6434,
+      "health": "▶ Running with 2nd",
+      "projectedMediaCost": 18.95,
+      "projectedNetProfit": 178.72,
+      "projectedMargin": 0.5957
+    },
+    {
+      "name": "Campaign 12 - 9000012 2nd",
+      "totalClicks": null,
+      "targetedClicks": 440.0,
+      "achievedClicks": 314.0,
+      "requiredClicks": 126.0,
+      "ctr": 0.0105,
+      "impressions": 29880.0,
+      "impressionsNeeded": 11990.0,
+      "impressionsTotal": 41870.0,
+      "mediaCost": 30.97,
+      "fsFee": 4.6455,
+      "novaFee": 33.496,
+      "budget": null,
+      "netProfit": null,
+      "margin": null,
+      "health": null,
+      "projectedMediaCost": 43.4
+    },
+    {
+      "name": "Campaign 13 - 9000013",
+      "totalClicks": 500.0,
+      "targetedClicks": 550.0,
+      "achievedClicks": 179.0,
+      "requiredClicks": 0.0,
+      "ctr": 0.0079,
+      "impressions": 22796.0,
+      "impressionsNeeded": 0.0,
+      "impressionsTotal": 22796.0,
+      "mediaCost": 16.88,
+      "fsFee": 2.532,
+      "novaFee": 18.2368,
+      "budget": 300.0,
+      "netProfit": 221.5781,
+      "margin": 0.7386,
+      "health": "▶ Running with 2nd",
+      "projectedMediaCost": 16.88,
+      "projectedNetProfit": 181.61,
+      "projectedMargin": 0.6054
+    },
+    {
+      "name": "Campaign 13 - 9000013 2nd",
+      "totalClicks": null,
+      "targetedClicks": 371.0,
+      "achievedClicks": 37.0,
+      "requiredClicks": 334.0,
+      "ctr": 0.0082,
+      "impressions": 4531.0,
+      "impressionsNeeded": 40901.0,
+      "impressionsTotal": 45432.0,
+      "mediaCost": 3.85,
+      "fsFee": 0.5775,
+      "novaFee": 36.3456,
+      "budget": null,
+      "netProfit": null,
+      "margin": null,
+      "health": null,
+      "projectedMediaCost": 38.6
+    },
+    {
+      "name": "Campaign 14 - 9000014",
+      "totalClicks": 250.0,
+      "targetedClicks": 275.0,
+      "achievedClicks": 88.0,
+      "requiredClicks": 187.0,
+      "ctr": 0.0182,
+      "impressions": 4830.0,
+      "impressionsNeeded": 10264.0,
+      "impressionsTotal": 15094.0,
+      "mediaCost": 4.65,
+      "fsFee": 0.6975,
+      "novaFee": 12.0752,
+      "budget": 150.0,
+      "netProfit": 132.5773,
+      "margin": 0.8838,
+      "health": null,
+      "projectedMediaCost": 14.53,
+      "projectedNetProfit": 121.21,
+      "projectedMargin": 0.8081
+    },
+    {
+      "name": "Campaign 15 - 9000015",
+      "totalClicks": 250.0,
+      "targetedClicks": 275.0,
+      "achievedClicks": 21.0,
+      "requiredClicks": 254.0,
+      "ctr": 0.0211,
+      "impressions": 996.0,
+      "impressionsNeeded": 12047.0,
+      "impressionsTotal": 13043.0,
+      "mediaCost": 1.01,
+      "fsFee": 0.1515,
+      "novaFee": 10.4344,
+      "budget": 150.0,
+      "netProfit": 138.4041,
+      "margin": 0.9227,
+      "health": null,
+      "projectedMediaCost": 13.23,
+      "projectedNetProfit": 124.36,
+      "projectedMargin": 0.829
+    },
+    {
+      "name": "Campaign 16 - 9000016",
+      "totalClicks": 500.0,
+      "targetedClicks": 550.0,
+      "achievedClicks": 148.0,
+      "requiredClicks": 402.0,
+      "ctr": 0.0069,
+      "impressions": 21512.0,
+      "impressionsNeeded": 58431.0,
+      "impressionsTotal": 79943.0,
+      "mediaCost": 17.92,
+      "fsFee": 2.688,
+      "novaFee": 63.9544,
+      "budget": 300.0,
+      "netProfit": 215.4376,
+      "margin": 0.7181,
+      "health": null,
+      "projectedMediaCost": 66.59,
+      "projectedNetProfit": 159.46,
+      "projectedMargin": 0.5315
+    },
+    {
+      "name": "Campaign 17 - 9000017",
+      "totalClicks": 500.0,
+      "targetedClicks": 550.0,
+      "achievedClicks": 275.0,
+      "requiredClicks": 275.0,
+      "ctr": 0.0079,
+      "impressions": 34832.0,
+      "impressionsNeeded": 34832.0,
+      "impressionsTotal": 69664.0,
+      "mediaCost": 24.51,
+      "fsFee": 3.6765,
+      "novaFee": 55.7312,
+      "budget": 300.0,
+      "netProfit": 216.0823,
+      "margin": 0.7203,
+      "health": null,
+      "projectedMediaCost": 49.02,
+      "projectedNetProfit": 187.9,
+      "projectedMargin": 0.6263
+    },
+    {
+      "name": "Campaign 18 - 9000018",
+      "totalClicks": 1000.0,
+      "targetedClicks": 1100.0,
+      "achievedClicks": 654.0,
+      "requiredClicks": 0.0,
+      "ctr": 0.0176,
+      "impressions": 37120.0,
+      "impressionsNeeded": 0.0,
+      "impressionsTotal": 37120.0,
+      "mediaCost": 33.01,
+      "fsFee": 4.9515,
+      "novaFee": 29.696,
+      "budget": 600.0,
+      "netProfit": 477.7631,
+      "margin": 0.7963,
+      "health": "▶ Running with 2nd",
+      "projectedMediaCost": 33.01,
+      "projectedNetProfit": 472.08,
+      "projectedMargin": 0.7868
+    },
+    {
+      "name": "Campaign 18 - 9000018 2nd",
+      "totalClicks": null,
+      "targetedClicks": 446.0,
+      "achievedClicks": 374.0,
+      "requiredClicks": 72.0,
+      "ctr": 0.0142,
+      "impressions": 26279.0,
+      "impressionsNeeded": 5059.0,
+      "impressionsTotal": 31338.0,
+      "mediaCost": 25.66,
+      "fsFee": 3.849,
+      "novaFee": 25.0704,
+      "budget": null,
+      "netProfit": null,
+      "margin": null,
+      "health": null,
+      "projectedMediaCost": 30.6
+    },
+    {
+      "name": "Campaign 19 - 9000019",
+      "totalClicks": 300.0,
+      "targetedClicks": 330.0,
+      "achievedClicks": 0.0,
+      "requiredClicks": 330.0,
+      "ctr": null,
+      "impressions": 0.0,
+      "impressionsNeeded": null,
+      "impressionsTotal": null,
+      "mediaCost": 0.0,
+      "fsFee": 0.0,
+      "novaFee": null,
+      "budget": 180.0,
+      "netProfit": 180.0,
+      "margin": 1.0,
+      "health": null,
+      "projectedMediaCost": 0.0,
+      "projectedNetProfit": 180.0,
+      "projectedMargin": 1.0
+    },
+    {
+      "name": "Campaign 20 - 9000020",
+      "totalClicks": 500.0,
+      "targetedClicks": 550.0,
+      "achievedClicks": 235.0,
+      "requiredClicks": 315.0,
+      "ctr": 0.0096,
+      "impressions": 24605.0,
+      "impressionsNeeded": 32981.0,
+      "impressionsTotal": 57586.0,
+      "mediaCost": 21.25,
+      "fsFee": 3.1875,
+      "novaFee": 46.0688,
+      "budget": 300.0,
+      "netProfit": 229.4937,
+      "margin": 0.765,
+      "health": null,
+      "projectedMediaCost": 49.73,
+      "projectedNetProfit": 196.74,
+      "projectedMargin": 0.6558
+    },
+    {
+      "name": "Campaign 21 - 9000021",
+      "totalClicks": 500.0,
+      "targetedClicks": 550.0,
+      "achievedClicks": 316.0,
+      "requiredClicks": 234.0,
+      "ctr": 0.0209,
+      "impressions": 15113.0,
+      "impressionsNeeded": 11191.0,
+      "impressionsTotal": 26304.0,
+      "mediaCost": 11.96,
+      "fsFee": 1.794,
+      "novaFee": 21.0432,
+      "budget": 300.0,
+      "netProfit": 265.2028,
+      "margin": 0.884,
+      "health": null,
+      "projectedMediaCost": 20.82,
+      "projectedNetProfit": 255.02,
+      "projectedMargin": 0.8501
+    },
+    {
+      "name": "Campaign 22 - 9000022",
+      "totalClicks": 500.0,
+      "targetedClicks": 550.0,
+      "achievedClicks": 293.0,
+      "requiredClicks": 257.0,
+      "ctr": 0.0203,
+      "impressions": 14447.0,
+      "impressionsNeeded": 12672.0,
+      "impressionsTotal": 27119.0,
+      "mediaCost": 13.41,
+      "fsFee": 2.0115,
+      "novaFee": 21.6952,
+      "budget": 300.0,
+      "netProfit": 262.8833,
+      "margin": 0.8763,
+      "health": null,
+      "projectedMediaCost": 25.17,
+      "projectedNetProfit": 249.36,
+      "projectedMargin": 0.8312
+    },
+    {
+      "name": "Campaign 23 - 9000023",
+      "totalClicks": 500.0,
+      "targetedClicks": 550.0,
+      "achievedClicks": 293.0,
+      "requiredClicks": 257.0,
+      "ctr": 0.0259,
+      "impressions": 11321.0,
+      "impressionsNeeded": 9930.0,
+      "impressionsTotal": 21251.0,
+      "mediaCost": 10.2,
+      "fsFee": 1.53,
+      "novaFee": 17.0008,
+      "budget": 300.0,
+      "netProfit": 271.2692,
+      "margin": 0.9042,
+      "health": null,
+      "projectedMediaCost": 19.15,
+      "projectedNetProfit": 260.98,
+      "projectedMargin": 0.8699
+    },
+    {
+      "name": "Campaign 24 - 9000024",
+      "totalClicks": 250.0,
+      "targetedClicks": 275.0,
+      "achievedClicks": 0.0,
+      "requiredClicks": 275.0,
+      "ctr": null,
+      "impressions": 0.0,
+      "impressionsNeeded": null,
+      "impressionsTotal": null,
+      "mediaCost": 0.0,
+      "fsFee": 0.0,
+      "novaFee": null,
+      "budget": 150.0,
+      "netProfit": 150.0,
+      "margin": 1.0,
+      "health": null,
+      "projectedMediaCost": 0.0,
+      "projectedNetProfit": 150.0,
+      "projectedMargin": 1.0
+    },
+    {
+      "name": "Campaign 25 - 9000025",
+      "totalClicks": 250.0,
+      "targetedClicks": 275.0,
+      "achievedClicks": 134.0,
+      "requiredClicks": 141.0,
+      "ctr": 0.008,
+      "impressions": 16791.0,
+      "impressionsNeeded": 17668.0,
+      "impressionsTotal": 34459.0,
+      "mediaCost": 13.2,
+      "fsFee": 1.98,
+      "novaFee": 27.5672,
+      "budget": 150.0,
+      "netProfit": 107.2528,
+      "margin": 0.715,
+      "health": null,
+      "projectedMediaCost": 27.09,
+      "projectedNetProfit": 91.28,
+      "projectedMargin": 0.6085
+    },
+    {
+      "name": "Campaign 26 - 9000026",
+      "totalClicks": 300.0,
+      "targetedClicks": 330.0,
+      "achievedClicks": 26.0,
+      "requiredClicks": 304.0,
+      "ctr": 0.0171,
+      "impressions": 1517.0,
+      "impressionsNeeded": 17737.0,
+      "impressionsTotal": 19254.0,
+      "mediaCost": 1.33,
+      "fsFee": 0.1995,
+      "novaFee": 15.4032,
+      "budget": 180.0,
+      "netProfit": 163.0673,
+      "margin": 0.9059,
+      "health": null,
+      "projectedMediaCost": 16.88,
+      "projectedNetProfit": 145.18,
+      "projectedMargin": 0.8066
+    },
+    {
+      "name": "Campaign 27 - 9000027",
+      "totalClicks": 500.0,
+      "targetedClicks": 550.0,
+      "achievedClicks": 113.0,
+      "requiredClicks": 437.0,
+      "ctr": 0.0114,
+      "impressions": 9929.0,
+      "impressionsNeeded": 38398.0,
+      "impressionsTotal": 48327.0,
+      "mediaCost": 9.28,
+      "fsFee": 1.392,
+      "novaFee": 38.6616,
+      "budget": 300.0,
+      "netProfit": 250.6664,
+      "margin": 0.8356,
+      "health": null,
+      "projectedMediaCost": 45.17,
+      "projectedNetProfit": 209.4,
+      "projectedMargin": 0.698
+    },
+    {
+      "name": "Campaign 28 - 9000028",
+      "totalClicks": 300.0,
+      "targetedClicks": 330.0,
+      "achievedClicks": 14.0,
+      "requiredClicks": 316.0,
+      "ctr": 0.0282,
+      "impressions": 497.0,
+      "impressionsNeeded": 11218.0,
+      "impressionsTotal": 11715.0,
+      "mediaCost": 0.53,
+      "fsFee": 0.0795,
+      "novaFee": 9.372,
+      "budget": 180.0,
+      "netProfit": 170.0185,
+      "margin": 0.9445,
+      "health": null,
+      "projectedMediaCost": 12.49,
+      "projectedNetProfit": 156.26,
+      "projectedMargin": 0.8681
+    },
+    {
+      "name": "Campaign 29 - 9000029",
+      "totalClicks": 200.0,
+      "targetedClicks": 220.0,
+      "achievedClicks": 7.0,
+      "requiredClicks": 213.0,
+      "ctr": 0.0227,
+      "impressions": 308.0,
+      "impressionsNeeded": 9372.0,
+      "impressionsTotal": 9680.0,
+      "mediaCost": 0.34,
+      "fsFee": 0.051,
+      "novaFee": 7.744,
+      "budget": 120.0,
+      "netProfit": 111.865,
+      "margin": 0.9322,
+      "health": null,
+      "projectedMediaCost": 10.69,
+      "projectedNetProfit": 99.97,
+      "projectedMargin": 0.8331
+    },
+    {
+      "name": "Campaign 30 - 9000030",
+      "totalClicks": 250.0,
+      "targetedClicks": 275.0,
+      "achievedClicks": 0.0,
+      "requiredClicks": 275.0,
+      "ctr": null,
+      "impressions": 0.0,
+      "impressionsNeeded": null,
+      "impressionsTotal": null,
+      "mediaCost": 0.0,
+      "fsFee": 0.0,
+      "novaFee": null,
+      "budget": 150.0,
+      "netProfit": 150.0,
+      "margin": 1.0,
+      "health": "Ended",
+      "projectedMediaCost": 0.0,
+      "projectedNetProfit": 150.0,
+      "projectedMargin": 1.0
+    },
+    {
+      "name": "Campaign 31 - 9000031",
+      "totalClicks": 250.0,
+      "targetedClicks": 275.0,
+      "achievedClicks": 37.0,
+      "requiredClicks": 238.0,
+      "ctr": 0.0117,
+      "impressions": 3166.0,
+      "impressionsNeeded": 20365.0,
+      "impressionsTotal": 23531.0,
+      "mediaCost": 2.51,
+      "fsFee": 0.3765,
+      "novaFee": 18.8248,
+      "budget": 150.0,
+      "netProfit": 128.2887,
+      "margin": 0.8553,
+      "health": null,
+      "projectedMediaCost": 18.66,
+      "projectedNetProfit": 109.72,
+      "projectedMargin": 0.7315
+    },
+    {
+      "name": "Campaign 32 - 9000032",
+      "totalClicks": 500.0,
+      "targetedClicks": 550.0,
+      "achievedClicks": 39.0,
+      "requiredClicks": 511.0,
+      "ctr": 0.0101,
+      "impressions": 3865.0,
+      "impressionsNeeded": 50641.0,
+      "impressionsTotal": 54506.0,
+      "mediaCost": 4.0,
+      "fsFee": 0.6,
+      "novaFee": 43.6048,
+      "budget": 300.0,
+      "netProfit": 251.7952,
+      "margin": 0.8393,
+      "health": null,
+      "projectedMediaCost": 56.41,
+      "projectedNetProfit": 191.52,
+      "projectedMargin": 0.6384
+    },
+    {
+      "name": "Campaign 33 - 9000033",
+      "totalClicks": 250.0,
+      "targetedClicks": 275.0,
+      "achievedClicks": 20.0,
+      "requiredClicks": 255.0,
+      "ctr": 0.0127,
+      "impressions": 1579.0,
+      "impressionsNeeded": 20132.0,
+      "impressionsTotal": 21711.0,
+      "mediaCost": 1.17,
+      "fsFee": 0.1755,
+      "novaFee": 17.3688,
+      "budget": 150.0,
+      "netProfit": 131.2857,
+      "margin": 0.8752,
+      "health": null,
+      "projectedMediaCost": 16.09,
+      "projectedNetProfit": 114.13,
+      "projectedMargin": 0.7609
+    },
+    {
+      "name": "Campaign 34 - 9000034",
+      "totalClicks": 1000.0,
+      "targetedClicks": 1100.0,
+      "achievedClicks": 499.0,
+      "requiredClicks": 0.0,
+      "ctr": 0.0138,
+      "impressions": 36084.0,
+      "impressionsNeeded": 0.0,
+      "impressionsTotal": 36084.0,
+      "mediaCost": 31.93,
+      "fsFee": 4.7895,
+      "novaFee": 28.8672,
+      "budget": 600.0,
+      "netProfit": 444.7933,
+      "margin": 0.7413,
+      "health": "▶ Running with 2nd",
+      "projectedMediaCost": 31.93,
+      "projectedNetProfit": 387.06,
+      "projectedMargin": 0.6451
+    },
+    {
+      "name": "Campaign 34 - 9000034 2nd",
+      "totalClicks": null,
+      "targetedClicks": 601.0,
+      "achievedClicks": 156.0,
+      "requiredClicks": 445.0,
+      "ctr": 0.0069,
+      "impressions": 22511.0,
+      "impressionsNeeded": 64214.0,
+      "impressionsTotal": 86725.0,
+      "mediaCost": 17.6,
+      "fsFee": 2.64,
+      "novaFee": 69.38,
+      "budget": null,
+      "netProfit": null,
+      "margin": null,
+      "health": null,
+      "projectedMediaCost": 67.81
+    },
+    {
+      "name": "Campaign 35 - 9000035",
+      "totalClicks": 1000.0,
+      "targetedClicks": 1100.0,
+      "achievedClicks": 646.0,
+      "requiredClicks": 0.0,
+      "ctr": 0.0122,
+      "impressions": 53039.0,
+      "impressionsNeeded": 0.0,
+      "impressionsTotal": 53039.0,
+      "mediaCost": 49.99,
+      "fsFee": 7.4985,
+      "novaFee": 42.4312,
+      "budget": 600.0,
+      "netProfit": 399.2296,
+      "margin": 0.6654,
+      "health": "▶ Running with 2nd",
+      "projectedMediaCost": 49.99,
+      "projectedNetProfit": 333.31,
+      "projectedMargin": 0.5555
+    },
+    {
+      "name": "Campaign 35 - 9000035 2nd",
+      "totalClicks": null,
+      "targetedClicks": 454.0,
+      "achievedClicks": 142.0,
+      "requiredClicks": 312.0,
+      "ctr": 0.0051,
+      "impressions": 27699.0,
+      "impressionsNeeded": 60860.0,
+      "impressionsTotal": 88559.0,
+      "mediaCost": 26.09,
+      "fsFee": 3.9135,
+      "novaFee": 70.8472,
+      "budget": null,
+      "netProfit": null,
+      "margin": null,
+      "health": null,
+      "projectedMediaCost": 83.41
+    },
+    {
+      "name": "Campaign 36 - 9000036",
+      "totalClicks": 500.0,
+      "targetedClicks": 550.0,
+      "achievedClicks": 529.0,
+      "requiredClicks": 21.0,
+      "ctr": 0.0126,
+      "impressions": 42032.0,
+      "impressionsNeeded": 1669.0,
+      "impressionsTotal": 43701.0,
+      "mediaCost": 36.48,
+      "fsFee": 5.472,
+      "novaFee": 34.9608,
+      "budget": 300.0,
+      "netProfit": 223.0872,
+      "margin": 0.7436,
+      "health": null,
+      "projectedMediaCost": 37.93,
+      "projectedNetProfit": 221.42,
+      "projectedMargin": 0.7381
+    },
+    {
+      "name": "Campaign 37 - 9000037",
+      "totalClicks": 2000.0,
+      "targetedClicks": 2200.0,
+      "achievedClicks": 622.0,
+      "requiredClicks": 0.0,
+      "ctr": 0.0077,
+      "impressions": 81195.0,
+      "impressionsNeeded": 0.0,
+      "impressionsTotal": 81195.0,
+      "mediaCost": 59.42,
+      "fsFee": 8.913,
+      "novaFee": 64.956,
+      "budget": 1200.0,
+      "netProfit": 903.389,
+      "margin": 0.7528,
+      "health": "▶ Running with 2nd",
+      "projectedMediaCost": 59.42,
+      "projectedNetProfit": 760.42,
+      "projectedMargin": 0.6337
+    },
+    {
+      "name": "Campaign 37 - 9000037 2nd",
+      "totalClicks": null,
+      "targetedClicks": 1578.0,
+      "achievedClicks": 231.0,
+      "requiredClicks": 1347.0,
+      "ctr": 0.0091,
+      "impressions": 25399.0,
+      "impressionsNeeded": 148106.0,
+      "impressionsTotal": 173505.0,
+      "mediaCost": 21.32,
+      "fsFee": 3.198,
+      "novaFee": 138.804,
+      "budget": null,
+      "netProfit": null,
+      "margin": null,
+      "health": null,
+      "projectedMediaCost": 145.64
+    },
+    {
+      "name": "Campaign 38 - 9000038",
+      "totalClicks": 2000.0,
+      "targetedClicks": 2200.0,
+      "achievedClicks": 1088.0,
+      "requiredClicks": 0.0,
+      "ctr": 0.0124,
+      "impressions": 87992.0,
+      "impressionsNeeded": 0.0,
+      "impressionsTotal": 87992.0,
+      "mediaCost": 86.09,
+      "fsFee": 12.9135,
+      "novaFee": 70.3936,
+      "budget": 1200.0,
+      "netProfit": 884.0111,
+      "margin": 0.7367,
+      "health": "▶ Running with 2nd",
+      "projectedMediaCost": 86.09,
+      "projectedNetProfit": 830.83,
+      "projectedMargin": 0.6924
+    },
+    {
+      "name": "Campaign 38 - 9000038 2nd",
+      "totalClicks": null,
+      "targetedClicks": 1112.0,
+      "achievedClicks": 580.0,
+      "requiredClicks": 532.0,
+      "ctr": 0.01,
+      "impressions": 57771.0,
+      "impressionsNeeded": 52990.0,
+      "impressionsTotal": 110761.0,
+      "mediaCost": 50.42,
+      "fsFee": 7.563,
+      "novaFee": 88.6088,
+      "budget": null,
+      "netProfit": null,
+      "margin": null,
+      "health": null,
+      "projectedMediaCost": 96.67
+    }
+  ],
+  "tabs": {
+    "urgentGroups": 18,
+    "urgentRows": 28,
+    "marginGroups": 23,
+    "marginRows": 33
+  },
+  "recalculated3Oct": {
+    "note": "Columns R and S as the report showed them when re-opened on 3 Oct 2026 (TODAY = 3 Oct in Dhaka). \"⏸ Moved to 2nd\" was renamed \"▶ Running with 2nd\" on 3 Oct 2026.",
+    "sheetTimeZone": "Asia/Dhaka",
+    "today": "2026-10-03",
+    "rows": [
+      {
+        "health": "🟢 Ahead | 1/day",
+        "daysLeft": 20
+      },
+      {
+        "health": "🔴 Critical | 26/day",
+        "daysLeft": 18
+      },
+      {
+        "health": "🔴 Critical | 9/day",
+        "daysLeft": 23
+      },
+      {
+        "health": "▶ Running with 2nd",
+        "daysLeft": 5
+      },
+      {
+        "health": "🔴 Critical | 183/day",
+        "daysLeft": 5
+      },
+      {
+        "health": "▶ Running with 2nd",
+        "daysLeft": 5
+      },
+      {
+        "health": "🔴 Critical | 23/day",
+        "daysLeft": 5
+      },
+      {
+        "health": "▶ Running with 2nd",
+        "daysLeft": 12
+      },
+      {
+        "health": "🔴 Critical | 44/day",
+        "daysLeft": 12
+      },
+      {
+        "health": "🟡 Behind | 10/day",
+        "daysLeft": 28
+      },
+      {
+        "health": "🔴 Critical | 49/day",
+        "daysLeft": 10
+      },
+      {
+        "health": "🔴 Critical | 28/day",
+        "daysLeft": 16
+      },
+      {
+        "health": "🔴 Critical | 8/day",
+        "daysLeft": 23
+      },
+      {
+        "health": "▶ Running with 2nd",
+        "daysLeft": 22
+      },
+      {
+        "health": "🔴 Critical | 93/day",
+        "daysLeft": 22
+      },
+      {
+        "health": "▶ Running with 2nd",
+        "daysLeft": 10
+      },
+      {
+        "health": "🟢 Ahead | 13/day",
+        "daysLeft": 10
+      },
+      {
+        "health": "▶ Running with 2nd",
+        "daysLeft": 6
+      },
+      {
+        "health": "🔴 Critical | 58/day",
+        "daysLeft": 6
+      },
+      {
+        "health": "🟡 Behind | 8/day",
+        "daysLeft": 23
+      },
+      {
+        "health": "🟡 Behind | 9/day",
+        "daysLeft": 27
+      },
+      {
+        "health": "🔴 Critical | 46/day",
+        "daysLeft": 9
+      },
+      {
+        "health": "🟡 Behind | 17/day",
+        "daysLeft": 16
+      },
+      {
+        "health": "▶ Running with 2nd",
+        "daysLeft": 4
+      },
+      {
+        "health": "🟡 Behind | 19/day",
+        "daysLeft": 4
+      },
+      {
+        "health": "🟡 Behind | 11/day",
+        "daysLeft": 30
+      },
+      {
+        "health": "🔴 Critical | 66/day",
+        "daysLeft": 5
+      },
+      {
+        "health": "🔴 Critical | 27/day",
+        "daysLeft": 9
+      },
+      {
+        "health": "🔴 Critical | 29/day",
+        "daysLeft": 9
+      },
+      {
+        "health": "🔴 Critical | 54/day",
+        "daysLeft": 5
+      },
+      {
+        "health": "🟡 Behind | 10/day",
+        "daysLeft": 28
+      },
+      {
+        "health": "🔴 Critical | 29/day",
+        "daysLeft": 5
+      },
+      {
+        "health": "🟡 Behind | 12/day",
+        "daysLeft": 26
+      },
+      {
+        "health": "🔴 Critical | 45/day",
+        "daysLeft": 10
+      },
+      {
+        "health": "🟡 Behind | 11/day",
+        "daysLeft": 28
+      },
+      {
+        "health": "🟡 Behind | 8/day",
+        "daysLeft": 28
+      },
+      {
+        "health": "Ended",
+        "daysLeft": 0
+      },
+      {
+        "health": "🔴 Critical | 11/day",
+        "daysLeft": 22
+      },
+      {
+        "health": "🔴 Critical | 30/day",
+        "daysLeft": 17
+      },
+      {
+        "health": "🟡 Behind | 10/day",
+        "daysLeft": 26
+      },
+      {
+        "health": "▶ Running with 2nd",
+        "daysLeft": 12
+      },
+      {
+        "health": "🔴 Critical | 38/day",
+        "daysLeft": 12
+      },
+      {
+        "health": "▶ Running with 2nd",
+        "daysLeft": 5
+      },
+      {
+        "health": "🔴 Critical | 65/day",
+        "daysLeft": 5
+      },
+      {
+        "health": "🟢 Ahead | 1/day",
+        "daysLeft": 16
+      },
+      {
+        "health": "▶ Running with 2nd",
+        "daysLeft": 12
+      },
+      {
+        "health": "🔴 Critical | 114/day",
+        "daysLeft": 12
+      },
+      {
+        "health": "▶ Running with 2nd",
+        "daysLeft": 5
+      },
+      {
+        "health": "🔴 Critical | 111/day",
+        "daysLeft": 5
+      }
+    ]
+  },
+  "trackerTimeZone": "Australia/Sydney"
+}
