@@ -2,12 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { TOOLS } from '@/content/tools';
 import { Button } from './Button';
+import { CampaignCalculator } from './CampaignCalculator';
 import { Icon } from './Icon';
-import { LogoMark } from './Logo';
+import { LogoFull, LogoMark } from './Logo';
 import s from './AppShell.module.css';
 
 function initials(name: string) {
@@ -19,6 +20,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { user, signOut, demo } = useAuth();
   const router = useRouter();
   const path = usePathname() ?? '/';
+  const [calcOpen, setCalcOpen] = useState(false);
 
   useEffect(() => {
     if (!user) router.replace('/');
@@ -41,15 +43,18 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className={s.shell}>
       <aside className={s.sidebar}>
-        <Link href="/home/" className={s.home} aria-label="CleverAds home" title="Home">
-          <LogoMark />
-          <span>
-            <span className={s.brandName} style={{ display: 'block' }}>CleverAds</span>
-            <span className={s.brandSub}>Operations</span>
-          </span>
+        <Link href="/home/" className={s.home} aria-label="CleverAds Operations home" title="Home">
+          <LogoFull height={58} title="CleverAds" />
+          <span className={s.brandSub}>Operations</span>
         </Link>
         <nav className={s.nav} aria-label="Main">
           {TOOLS.filter((t) => t.group === 'main').map(item)}
+          <div className={s.divider} />
+          <div className={s.navLabel}>Tools</div>
+          <button type="button" className={`${s.navItem} ${s.navButton} ${calcOpen ? s.navActive : ''}`} onClick={() => setCalcOpen(true)} aria-haspopup="dialog">
+            <Icon name="calc" />
+            Campaign Calculator
+          </button>
           <div className={s.divider} />
           {TOOLS.filter((t) => t.group === 'help').map(item)}
         </nav>
@@ -69,6 +74,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Button>
         </div>
       </aside>
+      <CampaignCalculator open={calcOpen} onClose={() => setCalcOpen(false)} />
       <main className={s.main}>
         <div className={s.content}>{children}</div>
         <footer className={s.footer}>

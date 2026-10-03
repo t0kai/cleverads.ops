@@ -17,9 +17,10 @@
 }
 .home {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 8px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 8px 10px;
   margin: -6px 0;
   border-radius: 10px;
   color: var(--ink);
@@ -29,13 +30,15 @@
 .home:hover {
   background: var(--tint-brand);
 }
-.brandName {
-  font-weight: 700;
-  font-size: 15px;
-}
 .brandSub {
-  font-size: 12px;
-  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  background: linear-gradient(90deg, #2447d6, #6c5ce7);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 .nav {
   display: flex;
@@ -154,4 +157,23 @@
   .main {
     padding: 20px 16px 0;
   }
+}
+
+.navLabel {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 4px 12px 2px;
+}
+.navButton {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
 }

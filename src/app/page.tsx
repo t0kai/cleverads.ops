@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { LogoFull } from '@/components/Logo';
 import { Notice } from '@/components/Notice';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { getAppConfig } from '@/shared/config';
@@ -35,8 +36,9 @@ export default function SignInPage() {
       <div className={s.float}>
         <div className={s.ring}>
           <div className={s.card}>
-            <div className={s.logo} aria-hidden="true">C</div>
-            <div className={s.brand}>CleverAds</div>
+            <div className={s.logo}>
+              <LogoFull height={104} />
+            </div>
             <div className={s.sub}>Operations</div>
             <div className={s.rule} />
             <h1 style={{ fontSize: 20, fontWeight: 600 }}>Sign in</h1>

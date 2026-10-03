@@ -2,7 +2,7 @@
  * Left menu and Home tools. A new tool = one entry here + its folder under src/app/.
  * `soon` tools show on Home as "coming soon" and stay out of the menu.
  */
-export type ToolIcon = 'home' | 'list' | 'clock' | 'book' | 'chart';
+export type ToolIcon = 'home' | 'list' | 'clock' | 'book' | 'chart' | 'calc';
 
 export interface Tool {
   readonly id: string;

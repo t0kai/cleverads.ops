@@ -105,6 +105,9 @@ and **Build optimization sheet** for ACM:
    Margin Issue and Formula (copied from the template) tabs, same formats and highlights as the Apps Script.
 4. Shows the result with Open in Google Sheets and XLSX / PDF / CSV downloads.
 
+**Campaign Calculator** (left menu › Tools): the marketing-calculator rules (Inventory = media × 1.10, FS 4.5% of media,
+Nova A$0.80 CPM) — impressions you can buy and the CTR you need at a target margin. `src/features/calculator/`.
+
 Where each advertiser's files live (tracker, template, Results folder): `src/content/advertisers.ts`.
 
 Next: Hub Data sheet (advertisers, ad types, run history) → Settings → the other advertisers.

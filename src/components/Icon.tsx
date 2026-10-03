@@ -6,6 +6,7 @@ const paths: Record<ToolIcon, string[]> = {
   clock: ['M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z', 'M12 7v5l3 2'],
   book: ['M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z', 'M4 21V5', 'M8 7h7', 'M8 11h5'],
   chart: ['M4 19V9', 'M10 19V5', 'M16 19v-7', 'M21 19H3'],
+  calc: ['M6 3h12a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z', 'M8 7h8v3H8z', 'M8.5 14h.01', 'M12 14h.01', 'M15.5 14h.01', 'M8.5 17.5h.01', 'M12 17.5h.01', 'M15.5 17.5h.01'],
 };
 
 export function Icon({ name, color = 'currentColor', size = 18 }: { name: ToolIcon; color?: string; size?: number }) {
