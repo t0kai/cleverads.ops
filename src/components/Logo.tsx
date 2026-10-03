@@ -41,3 +41,39 @@ export function LogoFull({ height = 56, title = 'CleverAds' }: { height?: number
     </svg>
   );
 }
+
+/** "CLEVER ADS" on its own, long and slim (for use next to the mark). */
+export function LogoWordmark({ height = 18 }: { height?: number }) {
+  return (
+    <svg height={height} width={(height * 227) / 32.5} viewBox="4.5 10 227 32.5" aria-hidden="true" style={{ display: 'block' }}>
+      <path fill="#14161c" fillRule="evenodd" d={TEXT_PATH} />
+    </svg>
+  );
+}
+
+/** Side-by-side lockup for the menu: round mark, then CLEVER ADS with a small label underneath. */
+export function LogoLockup({ label = 'Operations', markSize = 46, textHeight = 21 }: { label?: string; markSize?: number; textHeight?: number }) {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
+      <LogoMark size={markSize} />
+      <span style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+        <LogoWordmark height={textHeight} />
+        <span
+          style={{
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: '0.3em',
+            textTransform: 'uppercase',
+            background: 'linear-gradient(90deg, #2447d6, #6c5ce7)',
+            WebkitBackgroundClip: 'text',
+            backgroundClip: 'text',
+            color: 'transparent',
+            lineHeight: 1,
+          }}
+        >
+          {label}
+        </span>
+      </span>
+    </span>
+  );
+}

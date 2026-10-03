@@ -8,7 +8,7 @@ import { TOOLS } from '@/content/tools';
 import { Button } from './Button';
 import { CampaignCalculator } from './CampaignCalculator';
 import { Icon } from './Icon';
-import { LogoFull, LogoMark } from './Logo';
+import { LogoLockup, LogoMark } from './Logo';
 import s from './AppShell.module.css';
 
 function initials(name: string) {
@@ -44,8 +44,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className={s.shell}>
       <aside className={s.sidebar}>
         <Link href="/home/" className={s.home} aria-label="CleverAds Operations home" title="Home">
-          <LogoFull height={58} title="CleverAds" />
-          <span className={s.brandSub}>Operations</span>
+          <LogoLockup />
         </Link>
         <nav className={s.nav} aria-label="Main">
           {TOOLS.filter((t) => t.group === 'main').map(item)}

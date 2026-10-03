@@ -17,9 +17,7 @@
 }
 .home {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
+  align-items: center;
   padding: 8px 10px;
   margin: -6px 0;
   border-radius: 10px;
@@ -29,16 +27,6 @@
 }
 .home:hover {
   background: var(--tint-brand);
-}
-.brandSub {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  background: linear-gradient(90deg, #2447d6, #6c5ce7);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
 }
 .nav {
   display: flex;
