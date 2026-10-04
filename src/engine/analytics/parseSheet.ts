@@ -4,6 +4,8 @@ import type { MonthRow, RowWarning } from './types';
 /**
  * Turns the Data tab (as the Sheets API returns it with UNFORMATTED_VALUE + SERIAL_NUMBER)
  * into clean rows. Columns are found by their heading, so moving a column does not break anything.
+ * The tab is laid out like a DV360 monthly report, so a report can be pasted in as it is:
+ * a pasted heading row, the totals row and DV360's "Report Time:" lines are ignored quietly.
  * A bad row is skipped with a warning; it never stops the rest from loading.
  */
 
@@ -17,6 +19,7 @@ const COLUMNS = {
   fsPct: ['fs fee %'],
   dv: ['dv fee', 'dv fee (aud)', 'dv cost'],
   fs: ['fs fee', 'fs fee (aud)', 'fs cost'],
+  currency: ['partner currency', 'currency'],
 } as const;
 type Field = keyof typeof COLUMNS;
 const REQUIRED: readonly Field[] = ['month', 'advertiser', 'impressions', 'clicks', 'media'];
@@ -26,6 +29,15 @@ export const MAX_ROWS = 20_000;
 export class SheetFormatError extends Error {}
 
 const norm = (v: unknown) => String(v ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+
+/** True for a number, or text that reads as one. */
+const looksNumeric = (v: unknown): boolean => {
+  try {
+    return readNumber(v) != null;
+  } catch {
+    return false;
+  }
+};
 
 export function findColumns(header: readonly unknown[]): Record<Field, number> {
   const names = header.map(norm);
@@ -101,12 +113,17 @@ export function parseDataTab(values: readonly (readonly unknown[])[]): ParseResu
     const rawMonth = at('month');
     // Fully blank rows (or rows with only formulas showing blank) are ignored without a warning.
     if (advertiser === '' && (rawMonth == null || rawMonth === '')) continue;
+    // Not a data row: a pasted heading row, DV360's totals/"Report Time:" lines, or a note.
+    // These have no month and no numbers, so they are skipped quietly.
+    if (!readMonth(rawMonth) && !(['impressions', 'clicks', 'media'] as const).some((f) => looksNumeric(at(f)))) continue;
 
     try {
       if (advertiser === '') throw new Error('has no advertiser');
       if (advertiser.length > 120) throw new Error('has an advertiser name longer than 120 characters');
       const month = readMonth(rawMonth);
-      if (!month) throw new Error('has no valid month (use the 1st of the month, e.g. 1/9/2026)');
+      if (!month) throw new Error('has no valid month (use the DV360 format, e.g. 2026/09)');
+      const currency = String(at('currency') ?? '').trim().toUpperCase();
+      if (currency !== '' && currency !== 'AUD') throw new Error(`is in ${currency}, not AUD`);
 
       const optional = (f: Field, label: string): number | null => {
         let n: number | null;

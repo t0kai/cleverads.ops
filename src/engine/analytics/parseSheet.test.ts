@@ -89,3 +89,50 @@ describe('parseDataTab', () => {
     expect(() => parseDataTab([])).toThrow(SheetFormatError);
   });
 });
+
+describe('parseDataTab with a pasted DV360 report', () => {
+  // The Data tab: DV360's 7 columns, then the sheet's own worked-out columns.
+  const DV360 = ['Advertiser', 'Year', 'Month', 'Partner Currency', 'Impressions', 'Clicks', 'Media Cost (Partner Currency)',
+    'Row check', 'Month (read as)', 'DV fee %', 'FS fee %', 'DV fee (AUD)', 'FS fee (AUD)', 'Total cost (AUD)', 'CTR', 'eCPM (AUD)', 'eCPC (AUD)', 'Note'];
+
+  it('reads rows exactly as DV360 exports them, with the fees the sheet worked out', () => {
+    const { rows, warnings } = parseDataTab([
+      DV360,
+      ['Northwind Media', 2026, '2026/09', 'AUD', 146873, 2634, 162.201496, '✓ OK', SEP_2026, 0.1, 0.045, 16.2201496, 7.29906732, 185.7207129],
+      ['Bluegum Travel', 2026, SEP_2026, 'AUD', '1,603,520', '22,392', '1,273.48', '✓ OK', SEP_2026, 0.0373, 0.045, 47.500804, 57.3066],
+    ]);
+    expect(warnings).toEqual([]);
+    expect(rows.map((r) => r.advertiser)).toEqual(['Bluegum Travel', 'Northwind Media']);
+    expect(rows[1]).toMatchObject({ month: '2026-09', impressions: 146873, clicks: 2634 });
+    expect(rows[1]?.total).toBeCloseTo(185.7207129);
+    expect(rows[0]).toMatchObject({ impressions: 1603520, clicks: 22392, media: 1273.48, dv: 47.500804 });
+  });
+
+  it('quietly skips a pasted heading row, the totals row and the DV360 footer lines', () => {
+    const { rows, warnings } = parseDataTab([
+      DV360,
+      ['Northwind Media', 2026, '2026/09', 'AUD', 1000, 20, 100, '', '', 0.1, 0.045, 10, 4.5],
+      ['Advertiser', 'Year', 'Month', 'Partner Currency', 'Impressions', 'Clicks', 'Media Cost (Partner Currency)'],
+      ['', '', '', '', 5000, 90, 600],
+      ['Report Time:', '2026/10/01 09:15 AEST'],
+      ['Date Range:', '2026/09/01 to 2026/09/30'],
+      ['Group By:', 'Advertiser'],
+      ['MRC Accredited Metrics'],
+    ]);
+    expect(rows).toHaveLength(1);
+    expect(warnings).toEqual([]);
+  });
+
+  it('still warns about a real row with a month it cannot read, or a currency other than AUD', () => {
+    const { rows, warnings } = parseDataTab([
+      DV360,
+      ['Northwind Media', 2026, 'September', 'AUD', 1000, 20, 100, '', '', 0.1, 0.045, 10, 4.5],
+      ['Harbour Lane', 2026, '2026/09', 'USD', 1000, 20, 100, '', '', 0.1, 0.045, 10, 4.5],
+    ]);
+    expect(rows).toEqual([]);
+    expect(warnings.map((w) => w.message)).toEqual([
+      expect.stringMatching(/Row 2 has no valid month \(use the DV360 format, e.g. 2026\/09\)/),
+      expect.stringMatching(/Row 3 is in USD, not AUD/),
+    ]);
+  });
+});

@@ -213,7 +213,7 @@ function Dashboard({
         <Header fetchedAt={fetchedAt} refreshing={refreshing} onRefresh={onRefresh} demo={demo} />
         <div className={`${ui.card} ${s.card} ${s.errorCard}`}>
           <h2>The data sheet has no rows yet</h2>
-          <p>Add months on the Data tab (see its How to update tab), then press Refresh.</p>
+          <p>Paste the DV360 monthly report into the Data tab (see its How to update tab), then press Refresh.</p>
         </div>
       </div>
     );
