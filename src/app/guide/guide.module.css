@@ -174,3 +174,81 @@
   gap: 10px;
   text-align: center;
 }
+
+/* ---------- Topic tabs ---------- */
+.tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+  box-shadow: var(--shadow-card);
+  max-width: 720px;
+}
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--ink-2);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+}
+.tab:hover {
+  background: var(--tint);
+}
+.tab:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+.tabOn,
+.tabOn:hover {
+  background: var(--brand-gradient);
+  color: #fff;
+  box-shadow: var(--shadow-btn);
+}
+.tabIcon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--tint-brand);
+  color: var(--brand-strong);
+  flex: none;
+}
+.tabOn .tabIcon {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+.tabLabel {
+  font-size: 14px;
+  font-weight: 600;
+}
+.tabSub {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tabOn .tabSub {
+  color: #e3e7ff;
+}
+@media (max-width: 560px) {
+  .tab {
+    padding: 8px 10px;
+    gap: 8px;
+  }
+  .tabIcon,
+  .tabSub {
+    display: none;
+  }
+}

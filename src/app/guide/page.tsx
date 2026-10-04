@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { sendMail } from '@/adapters/gmail/sendMail';
 import { AppShell } from '@/components/AppShell';
 import { Button } from '@/components/Button';
@@ -10,6 +10,7 @@ import ui from '@/components/ui.module.css';
 import { SEED_ADVERTISERS } from '@/content/advertisers';
 import { FIXES, GUIDE_TOPICS, PROBLEM_TYPES, QUICK_START } from '@/content/guide';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { AnalyticsGuide } from '@/features/guide/AnalyticsGuide';
 import { MAX_MESSAGE_LENGTH, composeDeveloperMessage } from '@/features/contact-developer/composeMessage';
 import { getAppConfig } from '@/shared/config';
 import { toAppError, type AppError } from '@/shared/errors';
@@ -136,78 +137,158 @@ function ContactForm() {
   );
 }
 
+type Tab = 'reports' | 'analytics';
+
+const TABS: readonly { key: Tab; label: string; sub: string; hash: string }[] = [
+  { key: 'reports', label: 'Optimization reports', sub: 'Reports, ad types, advertisers', hash: '' },
+  { key: 'analytics', label: 'Performance Analytics', sub: 'Every part of the page, step by step', hash: '#analytics' },
+];
+
+function TabIcon({ tab }: { tab: Tab }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flex: 'none' }}>
+      {tab === 'reports' ? (
+        <>
+          <rect x="4" y="3" width="16" height="18" rx="2" />
+          <path d="M8 8h8M8 12h8M8 16h5" />
+        </>
+      ) : (
+        <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
+      )}
+    </svg>
+  );
+}
+
 export default function GuidePage() {
   const [open, setOpen] = useState<string>('report');
+  const [tab, setTab] = useState<Tab>('reports');
+
+  // The tab lives in the address (#analytics), so links from other pages open the right one.
+  useEffect(() => {
+    const read = () => setTab(window.location.hash === '#analytics' ? 'analytics' : 'reports');
+    read();
+    window.addEventListener('hashchange', read);
+    return () => window.removeEventListener('hashchange', read);
+  }, []);
+
+  const choose = (next: Tab) => {
+    setTab(next);
+    const hash = TABS.find((t) => t.key === next)?.hash ?? '';
+    window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}${hash}`);
+  };
+
   return (
     <AppShell>
       <div className={s.stack}>
-        <PageHeader title="User guide" lead="How to build reports, set up ad types and advertisers, and fix common problems." backHref="/home/" />
+        <PageHeader title="User guide" lead="Step-by-step help for every part of CleverAds Operations. Pick a topic below." backHref="/home/" />
 
-        <section className={`${ui.card} ${s.quick}`}>
-          <h2 style={{ fontSize: 16, fontWeight: 600 }}>Quick start: today&apos;s report in 4 steps</h2>
-          <div className={s.quickGrid}>
-            {QUICK_START.map((q, i) => (
-              <div key={q.title} className={s.quickItem}>
-                <span className={s.num}>{i + 1}</span>
-                <div style={{ fontSize: 14, fontWeight: 600 }}>{q.title}</div>
-                <div style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.5 }}>{q.text}</div>
-              </div>
-            ))}
+        <div className={s.tabs} role="tablist" aria-label="Guide topics">
+          {TABS.map((t) => (
+            <button
+              key={t.key}
+              id={`tab-${t.key}`}
+              type="button"
+              role="tab"
+              aria-selected={tab === t.key}
+              aria-controls={`panel-${t.key}`}
+              tabIndex={tab === t.key ? 0 : -1}
+              className={`${s.tab} ${tab === t.key ? s.tabOn : ''}`}
+              onClick={() => choose(t.key)}
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+                  e.preventDefault();
+                  const next = TABS[(TABS.findIndex((x) => x.key === t.key) + 1) % TABS.length];
+                  if (next) {
+                    choose(next.key);
+                    document.getElementById(`tab-${next.key}`)?.focus();
+                  }
+                }
+              }}
+            >
+              <span className={s.tabIcon}>
+                <TabIcon tab={t.key} />
+              </span>
+              <span style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
+                <span className={s.tabLabel}>{t.label}</span>
+                <span className={s.tabSub}>{t.sub}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {tab === 'analytics' ? (
+          <div id="panel-analytics" role="tabpanel" aria-labelledby="tab-analytics">
+            <AnalyticsGuide contact={<ContactForm />} />
           </div>
-        </section>
-
-        <div className={s.layout}>
-          <div className={s.left}>
-            <section className={ui.card} style={{ overflow: 'hidden' }}>
-              <div style={{ padding: '18px 20px 12px' }}>
-                <h2 style={{ fontSize: 16, fontWeight: 600 }}>How to</h2>
-                <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 2 }}>Click a topic to open its steps.</div>
-              </div>
-              {GUIDE_TOPICS.map((t, i) => {
-                const isOpen = open === t.key;
-                return (
-                  <div key={t.key} className={s.topic}>
-                    <button type="button" className={s.topicBtn} aria-expanded={isOpen} onClick={() => setOpen(isOpen ? '' : t.key)}>
-                      <span className={s.topicNo}>{i + 1}</span>
-                      <span style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: '1 1 auto', minWidth: 0 }}>
-                        <span style={{ fontSize: 15, fontWeight: 600 }}>{t.title}</span>
-                        <span style={{ fontSize: 13, color: 'var(--muted)' }}>{t.sub}</span>
-                      </span>
-                      <Chevron up={isOpen} />
-                    </button>
-                    {isOpen ? (
-                      <div className={s.topicBody}>
-                        <ol>
-                          {t.steps.map((step) => (
-                            <li key={step}>{step}</li>
-                          ))}
-                        </ol>
-                        <div className={s.tip}>{t.tip}</div>
-                      </div>
-                    ) : null}
-                  </div>
-                );
-              })}
-            </section>
-
-            <section className={`${ui.card}`} style={{ padding: '20px 24px' }}>
-              <h2 style={{ fontSize: 16, fontWeight: 600 }}>If something goes wrong</h2>
-              <div style={{ fontSize: 13, color: 'var(--muted)', margin: '4px 0 8px' }}>Most problems are fixed in a minute. If yours isn&apos;t here, message the developer.</div>
-              {FIXES.map((f) => (
-                <div key={f.problem} className={s.fix}>
-                  <span style={{ width: 24, height: 24, borderRadius: 999, background: 'var(--warn-bg)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--warn)', fontWeight: 700 }}>!</span>
-                  <div>
-                    <div style={{ fontSize: 14, fontWeight: 600 }}>{f.problem}</div>
-                    <div style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.55, marginTop: 2 }}>{f.fix}</div>
-                  </div>
+        ) : (
+          <div id="panel-reports" role="tabpanel" aria-labelledby="tab-reports" className={s.stack}>
+          <section className={`${ui.card} ${s.quick}`}>
+            <h2 style={{ fontSize: 16, fontWeight: 600 }}>Quick start: today&apos;s report in 4 steps</h2>
+            <div className={s.quickGrid}>
+              {QUICK_START.map((q, i) => (
+                <div key={q.title} className={s.quickItem}>
+                  <span className={s.num}>{i + 1}</span>
+                  <div style={{ fontSize: 14, fontWeight: 600 }}>{q.title}</div>
+                  <div style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.5 }}>{q.text}</div>
                 </div>
               ))}
-            </section>
+            </div>
+          </section>
+
+          <div className={s.layout}>
+            <div className={s.left}>
+              <section className={ui.card} style={{ overflow: 'hidden' }}>
+                <div style={{ padding: '18px 20px 12px' }}>
+                  <h2 style={{ fontSize: 16, fontWeight: 600 }}>How to</h2>
+                  <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 2 }}>Click a topic to open its steps.</div>
+                </div>
+                {GUIDE_TOPICS.map((t, i) => {
+                  const isOpen = open === t.key;
+                  return (
+                    <div key={t.key} className={s.topic}>
+                      <button type="button" className={s.topicBtn} aria-expanded={isOpen} onClick={() => setOpen(isOpen ? '' : t.key)}>
+                        <span className={s.topicNo}>{i + 1}</span>
+                        <span style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: '1 1 auto', minWidth: 0 }}>
+                          <span style={{ fontSize: 15, fontWeight: 600 }}>{t.title}</span>
+                          <span style={{ fontSize: 13, color: 'var(--muted)' }}>{t.sub}</span>
+                        </span>
+                        <Chevron up={isOpen} />
+                      </button>
+                      {isOpen ? (
+                        <div className={s.topicBody}>
+                          <ol>
+                            {t.steps.map((step) => (
+                              <li key={step}>{step}</li>
+                            ))}
+                          </ol>
+                          <div className={s.tip}>{t.tip}</div>
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </section>
+
+              <section className={`${ui.card}`} style={{ padding: '20px 24px' }}>
+                <h2 style={{ fontSize: 16, fontWeight: 600 }}>If something goes wrong</h2>
+                <div style={{ fontSize: 13, color: 'var(--muted)', margin: '4px 0 8px' }}>Most problems are fixed in a minute. If yours isn&apos;t here, message the developer.</div>
+                {FIXES.map((f) => (
+                  <div key={f.problem} className={s.fix}>
+                    <span style={{ width: 24, height: 24, borderRadius: 999, background: 'var(--warn-bg)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--warn)', fontWeight: 700 }}>!</span>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 600 }}>{f.problem}</div>
+                      <div style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.55, marginTop: 2 }}>{f.fix}</div>
+                    </div>
+                  </div>
+                ))}
+              </section>
+            </div>
+            <aside className={s.right}>
+              <ContactForm />
+            </aside>
           </div>
-          <aside className={s.right}>
-            <ContactForm />
-          </aside>
-        </div>
+          </div>
+        )}
       </div>
     </AppShell>
   );

@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import ui from '@/components/ui.module.css';
 import { useAuth } from '@/features/auth/AuthProvider';
@@ -67,6 +68,15 @@ function WhenVisible({ children, minHeight }: { children: ReactNode; minHeight: 
   return show ? <>{children}</> : <div ref={ref} className={`${ui.card} ${s.skeleton}`} style={{ minHeight }} aria-hidden="true" />;
 }
 
+function HelpIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.6V14M12 17.2v.1" />
+    </svg>
+  );
+}
+
 function Header({ fetchedAt, refreshing, onRefresh, demo }: { fetchedAt?: string; refreshing?: boolean; onRefresh?: () => void; demo?: boolean }) {
   const time = fetchedAt ? new Date(fetchedAt).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' }) : null;
   return (
@@ -75,14 +85,18 @@ function Header({ fetchedAt, refreshing, onRefresh, demo }: { fetchedAt?: string
         <h1 className={ui.pageTitle}>Performance Analytics</h1>
         <p className={s.lead}>DV360 cost and rates by advertiser, month by month · AUD</p>
       </div>
-      {onRefresh ? (
-        <div className={s.headActions}>
-          {demo ? <span className={s.demoChip}>Sample data (preview mode)</span> : time ? <span className={s.updated}>Updated {time}</span> : null}
+      <div className={s.headActions}>
+        {onRefresh && demo ? <span className={s.demoChip}>Sample data (preview mode)</span> : null}
+        {onRefresh && !demo && time ? <span className={s.updated}>Updated {time}</span> : null}
+        <Link href="/guide/#analytics" className={s.ghostBtn}>
+          <HelpIcon /> How to use this page
+        </Link>
+        {onRefresh ? (
           <button type="button" className={s.ghostBtn} onClick={onRefresh} disabled={refreshing} aria-busy={refreshing}>
             <RefreshIcon spinning={refreshing} /> {refreshing ? 'Refreshing…' : 'Refresh'}
           </button>
-        </div>
-      ) : null}
+        ) : null}
+      </div>
     </div>
   );
 }
