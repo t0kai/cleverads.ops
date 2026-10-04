@@ -17,6 +17,7 @@ export interface Tool {
 export const TOOLS: readonly Tool[] = [
   { id: 'home', label: 'Home', href: '/home/', icon: 'home', group: 'main' },
   { id: 'advertisers', label: 'Advertisers', href: '/advertisers/', icon: 'list', matches: ['/advertisers'], group: 'main' },
+  { id: 'analytics', label: 'Performance Analytics', href: '/analytics/', icon: 'chart', group: 'main' },
   { id: 'history', label: 'History', href: '/history/', icon: 'clock', group: 'main' },
   { id: 'guide', label: 'User guide', href: '/guide/', icon: 'book', group: 'help' },
 ];

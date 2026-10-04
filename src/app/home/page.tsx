@@ -27,6 +27,18 @@ const TILES = [
     delay: '0s',
   },
   {
+    href: '/analytics/',
+    icon: 'chart' as const,
+    title: 'Performance Analytics',
+    text: 'eCPM, eCPC and CTR by client and month: trends, comparisons and the full log.',
+    link: 'Open analytics →',
+    color: '#5B43D6',
+    bg: 'linear-gradient(160deg, #FFFFFF 0%, #F5F2FF 100%)',
+    border: '#E2DCF8',
+    iconBg: 'linear-gradient(135deg, #6C5CE7 0%, #4B3BC7 100%)',
+    delay: '-0.8s',
+  },
+  {
     href: '/history/',
     icon: 'clock' as const,
     title: 'History',

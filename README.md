@@ -3,7 +3,8 @@
 CleverAds team tools. First tool: **DV360 optimization sheets** per advertiser (ACM first, then 20–30 more), each with its own rules module.
 Designed & built by Taifur Rahman.
 
-- Static web app (Next.js static export) on Vercel. No server, no database, no secrets.
+- Next.js on Vercel. Pages are pre-rendered static files; the only server code is `/api/*` (Vercel Functions),
+  which reads private Google Sheets for signed-in staff. No database.
 - Google sign-in, only `@cleverads.com.au`. The browser talks to Google directly; the access token stays in memory.
 - The maths is pure TypeScript and is checked against a real report (golden test).
 - Time: every calculation and report uses **Asia/Dhaka** (`NEXT_PUBLIC_REPORT_TIME_ZONE`), same as the Apps Script.
@@ -28,14 +29,16 @@ npm run check              # typecheck + lint + tests + production build (run be
 | `npm test` | All tests, including the ACM golden test |
 | `npm run lint` | Code rules, including the layer rules below |
 | `npm run typecheck` | TypeScript strict check |
-| `npm run build` | Static site into `out/` (what Vercel serves) |
+| `npm run build` | Production build (static pages + the `/api` functions) |
 | `npm run audit:prod` | Known vulnerabilities in the packages the site ships |
 
 ## Deploy (Vercel)
 
 1. Push this folder to a **private** GitHub repo.
 2. Vercel › Add New › Project › import the repo. Framework: Next.js (detected). Node.js version: 24.
-3. Settings › Environment Variables: copy the names from `.env.example` (all are public values, never secrets). Leave `NEXT_PUBLIC_DEMO_MODE` empty.
+3. Settings › Environment Variables: copy the names from `.env.example`. `NEXT_PUBLIC_*` values are public; the
+   Performance Analytics ones (`ANALYTICS_*`, `GCP_*`) are server-only. Leave `NEXT_PUBLIC_DEMO_MODE` empty.
+   Settings › Build: leave Output Directory empty (it is no longer `out/`).
 4. Settings › Git: turn on "Wait for checks" so a failing CI run blocks the deploy.
 5. Add the Vercel URL to the Google OAuth client's **Authorized JavaScript origins**.
 
@@ -56,13 +59,14 @@ the app is Internal, so only cleverads.com.au accounts can sign in),
 
 ```
 src/
-  app/            Pages: sign-in, home, advertisers, advertisers/report, history, guide
+  app/            Pages: sign-in, home, advertisers, advertisers/report, analytics, history, guide; api/ = server routes
   components/     UI pieces: AppShell (menu + footer), Clock, Button, BackButton, Notice …
   content/        Words and lists you can edit without touching logic (guide, tools menu, advertiser seed)
-  features/       Use-cases: auth, build-report, contact-developer, clock
-  engine/         Pure maths: CSV reading, 2nd/3rd IO grouping, Sheets rounding, serial dates
+  features/       Use-cases: auth, build-report, contact-developer, clock, analytics (Performance Analytics UI)
+  engine/         Pure maths: CSV reading, 2nd/3rd IO grouping, Sheets rounding, serial dates, analytics/ (rates, trend, growth, compare)
   advertisers/    One folder per rules module (acm/ today) + registry.ts + _template/
   adapters/       The only code that talks to Google (sign-in, REST with retries, Gmail)
+  server/         Server-only (API routes): sign-in check, service-account token, sheet read + cache
   shared/         Error classes, app config (validated with Zod)
 tests/
   golden/         ACM report of 2 Oct 2026 reproduced number for number
@@ -71,13 +75,14 @@ tests/
 
 Layer rules, enforced by `npm run lint`:
 `engine/` never imports Google, UI or features; an advertiser module never imports another advertiser's module;
-`shared/` imports nothing above it.
+`shared/` imports nothing above it; `server/` has no UI; only `src/app/api/**` may import `server/`.
 
 Adding a tool to the menu and Home: one entry in `src/content/tools.ts` plus its page folder in `src/app/`.
 
 ## Packages and security
 
-Production dependencies are kept to four: `next`, `react`, `react-dom`, `zod`. CSV parsing, Google REST calls and
+Production dependencies: `next`, `react`, `react-dom`, `zod`, plus two server-only ones for Performance Analytics:
+`google-auth-library` 11.1.0 and `@vercel/oidc` 4.0.0 (keyless service-account sign-in; never sent to the browser). CSV parsing, Google REST calls and
 MIME e-mail are written here instead of pulling extra packages. Versions are pinned exactly (no `^`).
 
 | Package | Version | Why |
@@ -110,4 +115,52 @@ Nova A$0.80 CPM) — impressions you can buy and the CTR you need at a target ma
 
 Where each advertiser's files live (tracker, template, Results folder): `src/content/advertisers.ts`.
 
+**Performance Analytics** (left menu): see the section below.
+
 Next: Hub Data sheet (advertisers, ad types, run history) → Settings → the other advertisers.
+
+## Performance Analytics (left menu)
+
+DV360 cost and rates by advertiser and month, from one Google Sheet ("CleverAds Performance Data", Data tab).
+Sections: headline numbers, rates over time (bars + trend), price change since the start (same clients / all clients /
+trend, with price vs client mix), Compare (each side its own advertiser + month / quarter / half-year / year),
+Clients (sortable, start price on hover), month by month for one client, and the full campaign log (search, CSV).
+
+How it works:
+
+```
+Google Sheet (Data tab, shared ONLY with the service account)
+   │  GET /api/analytics/data   ← checks the Google token: our OAuth client + cleverads.com.au Workspace account
+   │                              reads the sheet with the service account, validates every row, caches 5 min
+   ▼
+engine/analytics/*   pure calculations (tested), one module per section
+   ▼
+features/analytics/sections/*   one component per section, each in its own error boundary
+```
+
+- One small request per visit; every filter change is calculated in the browser (60 clients × 60 months ≈ 40 ms).
+- A bad sheet row is skipped and listed on the page; it never stops the rest.
+- Filters are kept in the address bar, so a view can be shared as a link.
+- Preview mode (`NEXT_PUBLIC_DEMO_MODE=true`) shows made-up data; real client data never goes into git.
+
+### Setup (once)
+
+1. **Data sheet**: upload `Dashboard Details/CleverAds Performance Data.xlsx` to Google Drive and open it with Google Sheets.
+   Do not share it with people. Copy its ID (the long part of the URL) into `ANALYTICS_SHEET_ID`.
+2. **Service account** (Google Cloud › CleverAds Operations › IAM & Admin › Service Accounts): create `analytics-reader`,
+   no project roles. Share the data sheet with its e-mail as **Viewer**.
+3. **Keyless sign-in from Vercel** (recommended; no key to leak), see https://vercel.com/docs/oidc/gcp :
+   - Vercel › Project › Settings › Security › "Secure backend access with OIDC federation": choose **Team**, Save.
+   - Google Cloud › IAM & Admin › Workload Identity Federation › Create pool `vercel`, provider `vercel` (OIDC),
+     issuer `https://oidc.vercel.com/<team-slug>`, allowed audience `https://vercel.com/<team-slug>`,
+     attribute mapping `google.subject = assertion.sub`.
+   - Service account › Permissions › grant **Workload Identity User** to
+     `principal://iam.googleapis.com/projects/<PROJECT_NUMBER>/locations/global/workloadIdentityPools/vercel/subject/owner:<team-slug>:project:<vercel-project>:environment:production`.
+   - Enable the **IAM Service Account Credentials API** and **Security Token Service API**.
+4. **Vercel env vars** (Production): `ANALYTICS_SHEET_ID`, `GCP_PROJECT_NUMBER`, `GCP_SERVICE_ACCOUNT_EMAIL`,
+   `GCP_WORKLOAD_IDENTITY_POOL_ID=vercel`, `GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID=vercel`. Redeploy.
+   Fallback only if keys are allowed: `GOOGLE_SERVICE_ACCOUNT_KEY` (the JSON key, base64) as a Sensitive variable.
+5. Turn off **Publish to web** on the two old sheets and retire the old public dashboard.
+
+If anything is missing the page says so in plain words (for example who to share the sheet with); the reason is logged
+in Vercel › Logs, never shown in the browser.

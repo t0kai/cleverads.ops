@@ -1,12 +1,14 @@
 import type { NextConfig } from 'next';
 
-// Static export: Vercel only serves files. No server code, no secrets.
+// Pages are still pre-rendered static files. The only server code is /api/* (Vercel Functions),
+// which reads private Google Sheets for signed-in staff. Secrets live in Vercel env vars, never in the browser.
 const nextConfig: NextConfig = {
-  output: 'export',
   trailingSlash: true,
   reactStrictMode: true,
   poweredByHeader: false,
   images: { unoptimized: true },
+  // Server-only packages stay out of the browser bundle.
+  serverExternalPackages: ['google-auth-library'],
 };
 
 export default nextConfig;

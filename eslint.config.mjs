@@ -34,5 +34,13 @@ export default tseslint.config(
       'no-restricted-imports': ['error', { patterns: [{ group: ['@/advertisers/**', '../**', '!../types'], message: 'One advertiser module must not import another.' }, { group: ['@/adapters/*', '@/features/*', '@/components/*', '@/app/*', 'react', 'next/*'], message: 'Advertiser modules only use engine/ and shared/.' }] }],
     },
   },
+  // Server code (API routes only): no UI, no browser-side Google adapters.
+  layer('src/server/**', ['@/features/*', '@/components/*', '@/app/*', '@/adapters/*', 'react', 'react-dom'], 'server/ runs on Vercel only: no UI or browser code.'),
+  // Browser code must never pull in server code (it holds the service account logic).
+  {
+    files: ['src/features/**', 'src/components/**', 'src/app/**'],
+    ignores: ['src/app/api/**'],
+    rules: { 'no-restricted-imports': ['error', { patterns: [{ group: ['@/server/*'], message: 'Only src/app/api/** may import server code.' }] }] },
+  },
   layer('src/shared/**', ['@/adapters/*', '@/features/*', '@/components/*', '@/app/*', '@/engine/*', '@/advertisers/*'], 'shared/ is the bottom layer.'),
 );
