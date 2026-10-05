@@ -27,7 +27,7 @@ export default function AdvertisersPage() {
                   {a.name}
                 </div>
                 <div className="mono" style={{ fontSize: 13, color: 'var(--muted)' }}>
-                  {a.moduleId ? `${a.moduleId} · v2` : '—'}
+                  {a.moduleId ? `${a.moduleId}${a.rulesVersion ? ` · ${a.rulesVersion}` : ''}` : '—'}
                 </div>
                 <div>
                   {a.moduleId ? (

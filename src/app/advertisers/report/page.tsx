@@ -1,8 +1,7 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import { Suspense, useRef, useState, type DragEvent } from 'react';
-import { ACM_DEFAULTS } from '@/advertisers/acm/config';
+import { Fragment, Suspense, useEffect, useRef, useState, type DragEvent } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { BackButton } from '@/components/BackButton';
 import { Button } from '@/components/Button';
@@ -10,8 +9,9 @@ import { Notice } from '@/components/Notice';
 import ui from '@/components/ui.module.css';
 import { SEED_ADVERTISERS } from '@/content/advertisers';
 import { useAuth } from '@/features/auth/AuthProvider';
-import { buildAcmReport, type BuildResult, type BuildStep } from '@/features/build-report/buildAcmReport';
 import { checkUpload, type UploadCheck } from '@/features/build-report/checkUpload';
+import { loadRunner, type ReportRunner } from '@/features/build-report/runners';
+import type { BuildStep, ReportBuildResult } from '@/features/build-report/runTypes';
 import { getAppConfig } from '@/shared/config';
 import { AccessError, ValidationError, toAppError, type AppError } from '@/shared/errors';
 import s from './report.module.css';
@@ -24,7 +24,7 @@ const STEPS: { id: BuildStep; label: string }[] = [
   { id: 'targets', label: 'Reading targets from the Campaign Tracker' },
   { id: 'calculate', label: 'Calculating every insertion order' },
   { id: 'create', label: 'Creating the sheet in the Results folder' },
-  { id: 'write', label: 'Writing Report, Urgent, Margin Issue and Formula tabs' },
+  { id: 'write', label: 'Writing the report tabs' },
 ];
 
 function Tick({ warn }: { warn?: boolean }) {
@@ -77,7 +77,27 @@ function ReportBuilder() {
   const [step, setStep] = useState<BuildStep | null>(null);
   const [building, setBuilding] = useState(false);
   const [buildError, setBuildError] = useState<AppError | null>(null);
-  const [result, setResult] = useState<BuildResult | null>(null);
+  const [result, setResult] = useState<ReportBuildResult | null>(null);
+  const [runner, setRunner] = useState<ReportRunner | null>(null);
+  const [runnerMissing, setRunnerMissing] = useState(false);
+
+  // Each advertiser loads only its own builder and settings.
+  const moduleId = adv?.moduleId ?? null;
+  useEffect(() => {
+    let live = true;
+    setRunner(null);
+    setRunnerMissing(false);
+    loadRunner(moduleId)
+      .then((r) => {
+        if (!live) return;
+        setRunner(r);
+        setRunnerMissing(r == null);
+      })
+      .catch(() => live && setRunnerMissing(true));
+    return () => {
+      live = false;
+    };
+  }, [moduleId]);
 
   const read = async (f: File) => {
     setError(null);
@@ -105,17 +125,16 @@ function ReportBuilder() {
   };
 
   const build = async () => {
-    if (!check || !adv?.sources || building) return;
+    if (!check || !adv?.sources || !runner || building) return;
     setBuilding(true);
     setBuildError(null);
     setResult(null);
     try {
       const token = await getAccessToken();
-      const res = await buildAcmReport({
+      const res = await runner.build({
         token,
         rows: check.rows,
         sources: adv.sources,
-        config: ACM_DEFAULTS,
         reportTimeZone: getAppConfig().reportTimeZone,
         onStep: setStep,
       });
@@ -138,8 +157,7 @@ function ReportBuilder() {
     );
   }
 
-  const c = ACM_DEFAULTS;
-  const canBuild = Boolean(check && adv.sources && user && !demo && googleReady);
+  const canBuild = Boolean(check && adv.sources && runner && user && !demo && googleReady);
   const activeIndex = step ? STEPS.findIndex((x) => x.id === step) : -1;
 
   return (
@@ -152,7 +170,8 @@ function ReportBuilder() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <h1 className={ui.pageTitle}>{adv.name}</h1>
           <span className={`${ui.pill} mono`} style={{ background: 'var(--tint-brand)', color: 'var(--brand-strong)' }}>
-            {adv.moduleId} · rules v2
+            {adv.moduleId}
+            {runner ? ` · ${runner.version}` : ''}
           </span>
         </div>
       </div>
@@ -266,7 +285,7 @@ function ReportBuilder() {
                     return (
                       <li key={x.id} className={state === 'todo' ? s.progressTodo : undefined}>
                         <StepIcon state={state} />
-                        <span>{x.id === 'calculate' ? `Calculating ${check.ioCount} insertion orders` : x.label}</span>
+                        <span>{x.id === 'calculate' ? `Calculating ${check.ioCount} insertion orders` : x.id === 'write' && runner ? runner.writeLabel : x.label}</span>
                       </li>
                     );
                   })}
@@ -305,6 +324,7 @@ function ReportBuilder() {
                   <div className="mono" style={{ fontSize: 13, color: 'var(--muted)', overflowWrap: 'anywhere' }}>
                     {result.name}
                   </div>
+                  {result.breakdown ? <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 2 }}>{result.breakdown}</div> : null}
                 </div>
               </div>
               <div className={s.stats}>
@@ -314,7 +334,7 @@ function ReportBuilder() {
                 </div>
                 <div className={ui.stat}>
                   <div className={ui.statValue}>{result.urgentCampaigns}</div>
-                  <div className={ui.statLabel}>Urgent (ending ≤ {c.urgentDays} days)</div>
+                  <div className={ui.statLabel}>Urgent (ending ≤ {runner?.urgentDays ?? 12} days)</div>
                 </div>
                 <div className={ui.stat}>
                   <div className={ui.statValue}>{result.marginCampaigns}</div>
@@ -368,25 +388,21 @@ function ReportBuilder() {
 
         <aside className={s.side}>
           <section className={`${ui.card}`} style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <h2 style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--muted)' }}>Rates · Click ads</h2>
-            <dl className={s.dl}>
-              <dt>Client CPC</dt>
-              <dd>A${c.clientCpc.toFixed(2)}</dd>
-              <dt>Click buffer</dt>
-              <dd>{pct(c.clickBuffer)}</dd>
-              <dt>FS service fee</dt>
-              <dd>{pct(c.fsRate)}</dd>
-              <dt>Nova fee</dt>
-              <dd>A${c.novaCpm.toFixed(2)} CPM</dd>
-              <dt>Minimum margin</dt>
-              <dd>{pct(c.minMargin)}</dd>
-              <dt>Urgent window</dt>
-              <dd>{c.urgentDays} days</dd>
-              <dt>CTR range</dt>
-              <dd>
-                {pct(c.ctrLow)}–{pct(c.ctrHigh)}
-              </dd>
-            </dl>
+            <h2 style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--muted)' }}>Rates · {adv.name}</h2>
+            {runner ? (
+              <dl className={s.dl}>
+                {runner.rates.map((r) => (
+                  <Fragment key={r.label}>
+                    <dt>{r.label}</dt>
+                    <dd>{r.value}</dd>
+                  </Fragment>
+                ))}
+              </dl>
+            ) : runnerMissing ? (
+              <div style={{ fontSize: 13, color: 'var(--muted)' }}>This advertiser&apos;s rules are not built yet.</div>
+            ) : (
+              <div style={{ fontSize: 13, color: 'var(--muted)' }}>Loading…</div>
+            )}
           </section>
         </aside>
       </div>
