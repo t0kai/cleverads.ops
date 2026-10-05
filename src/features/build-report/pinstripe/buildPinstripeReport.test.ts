@@ -3,7 +3,8 @@ import { PINSTRIPE_DEFAULTS } from '@/advertisers/pinstripe';
 import { serialFromYmd } from '@/engine/dates/serial';
 import { ValidationError } from '@/shared/errors';
 import { buildPinstripeReport } from './buildPinstripeReport';
-import { settingsRows } from './sheetRequests';
+import { buildPinstripeRequests, settingsRows } from './sheetRequests';
+import { calculatePinstripe, pinstripeModule } from '@/advertisers/pinstripe';
 import { findPinstripeColumns, parsePinstripeTargets } from './trackerTargets';
 
 const ZONES = { trackerTimeZone: 'Australia/Sydney', reportTimeZone: 'Asia/Dhaka' };
@@ -141,5 +142,77 @@ describe('buildPinstripeReport against a fake Google', () => {
       kind: 'access',
       userMessage: 'No access to the Campaign Tracker.',
     });
+  });
+});
+
+/**
+ * Google rejects any cell or range outside a tab's grid. A new spreadsheet's first tab and every added tab
+ * start at 26 columns × 1000 rows unless the request says otherwise. This replays the requests in order
+ * with those rules, so a layout that grows past column Z fails here instead of in Google.
+ */
+function checkGrid(requests: Record<string, any>[]): string[] { // eslint-disable-line @typescript-eslint/no-explicit-any
+  const grids = new Map<number, { cols: number; rows: number }>([[0, { cols: 26, rows: 1000 }]]);
+  const problems: string[] = [];
+  const need = (sheetId: number, endCol: number, endRow: number, what: string) => {
+    const g = grids.get(sheetId);
+    if (!g) return problems.push(`${what}: unknown tab ${sheetId}`);
+    if (endCol > g.cols) problems.push(`${what}: column ${endCol} > ${g.cols} on tab ${sheetId}`);
+    if (endRow > g.rows) problems.push(`${what}: row ${endRow} > ${g.rows} on tab ${sheetId}`);
+  };
+  requests.forEach((r, i) => {
+    const gp = r.updateSheetProperties?.properties.gridProperties ?? r.addSheet?.properties.gridProperties;
+    const id = r.updateSheetProperties?.properties.sheetId ?? r.addSheet?.properties.sheetId;
+    if (id != null) {
+      const prev = grids.get(id) ?? { cols: 26, rows: 1000 };
+      grids.set(id, { cols: gp?.columnCount ?? prev.cols, rows: gp?.rowCount ?? prev.rows });
+    }
+    if (r.updateCells) {
+      const { start, rows } = r.updateCells;
+      const width = Math.max(...rows.map((x: { values: unknown[] }) => x.values.length));
+      need(start.sheetId, start.columnIndex + width, start.rowIndex + rows.length, `request ${i} updateCells`);
+    }
+    const ranges = [r.repeatCell?.range, ...(r.addConditionalFormatRule?.rule.ranges ?? [])].filter(Boolean);
+    for (const rg of ranges) need(rg.sheetId, rg.endColumnIndex ?? 0, rg.endRowIndex ?? 0, `request ${i} range`);
+    const dim = r.updateDimensionProperties?.range;
+    if (dim) need(dim.sheetId, dim.dimension === 'COLUMNS' ? dim.endIndex : 0, dim.dimension === 'ROWS' ? dim.endIndex : 0, `request ${i} dimension`);
+  });
+  return problems;
+}
+
+describe('every write fits inside the tabs', () => {
+  const day = (d: number) => serialFromYmd(2026, 10, d);
+  const io = (name: string, clicks: number, impressions: number, cost: number) => ({ name, clicks, impressions, cost, objective: '', status: '' });
+  const result = calculatePinstripe(
+    {
+      today: day(25),
+      rows: [io('Harbour Tea - Launch', 400, 25000, 300), io('Harbour Tea - Launch 2nd', 50, 4000, 10), io('Nordic Home - Lights', 300, 200000, 1900), io('Only A Second - 2nd', 1, 100, 1)],
+      targets: new Map([
+        ['harbour tea - launch', { start: day(1), end: day(30), target: 1250, budget: 500 }],
+        ['nordic home - lights', { start: day(1), end: day(30), target: 350000, budget: 2000 }],
+      ]),
+    },
+    PINSTRIPE_DEFAULTS,
+  );
+  const requests = buildPinstripeRequests({
+    ids: { report: 0, urgent: 2001, margin: 2002, settings: 2003 },
+    spec: pinstripeModule.buildSheetSpec(result, PINSTRIPE_DEFAULTS),
+    result,
+    config: PINSTRIPE_DEFAULTS,
+    trackerTab: 'Private Media Operations (Pinstripe)',
+    lastUpdated: '06 Oct 2026 12:35 AM',
+  }) as Record<string, any>[]; // eslint-disable-line @typescript-eslint/no-explicit-any
+
+  it('has urgent and margin rows to write (so those tabs are checked too)', () => {
+    expect(result.urgent.length).toBeGreaterThan(0);
+    expect(result.marginIssues.length).toBeGreaterThan(0);
+  });
+  it('never writes outside a tab', () => {
+    expect(checkGrid(requests)).toEqual([]);
+  });
+  it('the checker catches the old 26-column mistake', () => {
+    const narrowed = requests.map((r) =>
+      r.updateSheetProperties ? { updateSheetProperties: { ...r.updateSheetProperties, properties: { ...r.updateSheetProperties.properties, gridProperties: { frozenRowCount: 1 } } } } : r,
+    );
+    expect(checkGrid(narrowed).length).toBeGreaterThan(0);
   });
 });

@@ -17,6 +17,8 @@ const LAST_DATA_COL = PINSTRIPE_DATA_COLUMNS; // A–Y
 const UPDATED_COL = 26; // AA (0-based)
 const GROUP_COL = PINSTRIPE_GROUP_KEY_COLUMN - 1; // AB (0-based)
 const STOPPED_TEXT = 'Running with';
+/** A new spreadsheet has only 26 columns (A–Z); Pinstripe writes up to AB, so every tab is widened first. */
+export const GRID_COLUMNS = PINSTRIPE_HEADERS.length + 2;
 const HEADER_BG = '#D9E1F2';
 const HEADER_INK = '#1F2A44';
 
@@ -170,18 +172,19 @@ export interface PinstripeRequestInput {
 
 export function buildPinstripeRequests({ ids, spec, result, config, trackerTab, lastUpdated }: PinstripeRequestInput): object[] {
   const n = spec.rows.length;
-  const frozen = { frozenRowCount: 1, frozenColumnCount: 1 };
   const settings = settingsRows(config, trackerTab);
+  // Size every tab before writing: Google rejects cells outside the grid.
+  const grid = (rows: number) => ({ frozenRowCount: 1, frozenColumnCount: 1, columnCount: GRID_COLUMNS, rowCount: Math.max(1000, rows + 1) });
   return [
     // Tabs: Report, Urgent, Margin Issue, Settings
     {
       updateSheetProperties: {
-        properties: { sheetId: ids.report, title: 'Report', index: 0, gridProperties: frozen },
-        fields: 'title,index,gridProperties.frozenRowCount,gridProperties.frozenColumnCount',
+        properties: { sheetId: ids.report, title: 'Report', index: 0, gridProperties: grid(n) },
+        fields: 'title,index,gridProperties.frozenRowCount,gridProperties.frozenColumnCount,gridProperties.columnCount,gridProperties.rowCount',
       },
     },
-    { addSheet: { properties: { sheetId: ids.urgent, title: 'Urgent', index: 1, gridProperties: frozen } } },
-    { addSheet: { properties: { sheetId: ids.margin, title: 'Margin Issue', index: 2, gridProperties: frozen } } },
+    { addSheet: { properties: { sheetId: ids.urgent, title: 'Urgent', index: 1, gridProperties: grid(result.urgent.flatMap((g) => g.rows).length) } } },
+    { addSheet: { properties: { sheetId: ids.margin, title: 'Margin Issue', index: 2, gridProperties: grid(result.marginIssues.flatMap((g) => g.rows).length) } } },
     { addSheet: { properties: { sheetId: ids.settings, title: 'Settings', index: 3, gridProperties: { frozenRowCount: 1 } } } },
 
     // Report: header, rows (inputs as values, everything calculated as live formulas), last-updated stamp.

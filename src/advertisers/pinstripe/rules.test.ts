@@ -137,3 +137,35 @@ describe('Pinstripe Report tab', () => {
     expect(String(cell(0, 17))).toContain('SUMIF($AB$2:$AB,$AB2,$N$2:$N)');
   });
 });
+
+describe('Pinstripe formulas', () => {
+  it('every formula has balanced brackets and quotes', () => {
+    const r = calculatePinstripe(
+      {
+        today: day(11),
+        rows: [io('Harbour Tea - Launch', 400, 25000, 30), io('Harbour Tea - Launch 2nd', 5, 500, 1), io('Nordic Home - Lights', 300, 200000, 120)],
+        targets: new Map([
+          ['harbour tea - launch', target({ target: 1250 })],
+          ['nordic home - lights', target({ target: 350000, budget: 2000 })],
+        ]),
+      },
+      PINSTRIPE_DEFAULTS,
+    );
+    const formulas = buildPinstripeSheetSpec(r, PINSTRIPE_DEFAULTS)
+      .rows.flat()
+      .map((c) => c.value)
+      .filter((v): v is string => typeof v === 'string' && v.startsWith('='));
+    expect(formulas.length).toBeGreaterThan(30);
+    for (const f of formulas) {
+      expect((f.match(/"/g) ?? []).length % 2, f).toBe(0);
+      const outside = f.replace(/"[^"]*"/g, '');
+      let depth = 0;
+      for (const ch of outside) {
+        if (ch === '(') depth++;
+        if (ch === ')') depth--;
+        expect(depth, f).toBeGreaterThanOrEqual(0);
+      }
+      expect(depth, f).toBe(0);
+    }
+  });
+});
