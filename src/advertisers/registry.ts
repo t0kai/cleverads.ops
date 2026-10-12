@@ -10,6 +10,7 @@ type AnyModule = AdvertiserModule<any, any>;
 const loaders: Record<string, () => Promise<AnyModule>> = {
   acm: () => import('./acm').then((m) => m.acmModule),
   pinstripe: () => import('./pinstripe').then((m) => m.pinstripeModule),
+  timeout: () => import('./timeout').then((m) => m.timeOutModule),
 };
 
 export function listModuleIds(): string[] {

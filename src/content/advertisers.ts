@@ -66,4 +66,20 @@ export const SEED_ADVERTISERS: readonly AdvertiserSummary[] = [
       reportPrefix: 'Pinstripe Optimization Report - ',
     },
   },
+  {
+    id: 'timeout',
+    name: 'Time Out',
+    moduleId: 'timeout',
+    rulesVersion: 'v1',
+    timeZone: 'Australia/Sydney',
+    sources: {
+      // Same CAMPAIGN TRACKER GLOBAL file, Time Out's own tab. Read only.
+      trackerId: '157r8wGSMc11tV6jvRCny3JxUlHLxOose_HMikAm8BY8',
+      trackerTab: 'TimeOut',
+      trackerHeaderRow: 5,
+      // Same Results folder as the other reports.
+      outputFolderId: '1Z_YVfaCfV4CnqB6uKJb_Blh3Fn0EE0PK',
+      reportPrefix: 'Time Out Optimization Report - ',
+    },
+  },
 ];

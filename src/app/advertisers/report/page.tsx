@@ -158,6 +158,8 @@ function ReportBuilder() {
   }
 
   const canBuild = Boolean(check && adv.sources && runner && user && !demo && googleReady);
+  // Advertisers that name 2nd/3rd IOs their own way (e.g. Time Out's "2nd IO 3rd") check the upload with their own rule.
+  const groups = check && runner?.groupCheck ? runner.groupCheck(check.rows) : check;
   const activeIndex = step ? STEPS.findIndex((x) => x.id === step) : -1;
 
   return (
@@ -246,7 +248,7 @@ function ReportBuilder() {
                   <div className={ui.statLabel}>Insertion orders</div>
                 </div>
                 <div className={ui.stat}>
-                  <div className={ui.statValue}>{check.campaignsWithFollowOn}</div>
+                  <div className={ui.statValue}>{groups?.campaignsWithFollowOn ?? 0}</div>
                   <div className={ui.statLabel}>Campaigns with a 2nd IO</div>
                 </div>
                 <div className={ui.stat}>
@@ -259,10 +261,10 @@ function ReportBuilder() {
                   <Tick />
                   <span>Columns found: {check.columnsFound.map((x) => x[0]?.toUpperCase() + x.slice(1)).join(', ')}</span>
                 </li>
-                {check.orphanFollowOns.length ? (
+                {groups?.orphanFollowOns.length ? (
                   <li>
                     <Tick warn />
-                    <span>2nd IO without its main campaign in the file: {check.orphanFollowOns.join('; ')}</span>
+                    <span>2nd IO without its main campaign in the file: {groups.orphanFollowOns.join('; ')}</span>
                   </li>
                 ) : (
                   <li>

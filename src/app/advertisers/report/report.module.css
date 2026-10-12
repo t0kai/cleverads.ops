@@ -83,7 +83,7 @@
 .dl {
   margin: 0;
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 8px 12px;
   font-size: 14px;
 }
@@ -93,6 +93,8 @@
 .dl dd {
   margin: 0;
   font-family: var(--font-mono);
+  text-align: right;
+  overflow-wrap: anywhere;
 }
 
 /* Upload complete: a soft green card, a badge that pops in and a tick that draws itself once. */

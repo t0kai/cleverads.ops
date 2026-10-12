@@ -1,4 +1,5 @@
 import type { ReportSources, TrackerSources } from '@/content/advertisers';
+import type { Dv360Row } from '@/engine/csv/dv360';
 import { ValidationError } from '@/shared/errors';
 import type { ReportBuildResult, RunInput } from './runTypes';
 
@@ -16,6 +17,8 @@ export interface ReportRunner {
   /** Last build step label, e.g. "Writing Report, Urgent, Margin Issue and Settings tabs". */
   readonly writeLabel: string;
   build(input: RunInput & { readonly sources: TrackerSources }): Promise<ReportBuildResult>;
+  /** For advertisers that name 2nd/3rd IOs their own way: the upload check uses this instead of the general rule. */
+  groupCheck?(rows: readonly Dv360Row[]): { readonly campaignsWithFollowOn: number; readonly orphanFollowOns: readonly string[] };
 }
 
 const pct = (n: number) => `${+(n * 100).toFixed(2)}%`;
@@ -69,6 +72,39 @@ const loaders: Record<string, () => Promise<ReportRunner>> = {
       urgentDays: c.urgentDays,
       writeLabel: 'Writing Report, Urgent, Margin Issue and Settings tabs',
       build: ({ sources, ...run }) => buildPinstripeReport({ ...run, sources, config: c }),
+    };
+  },
+  timeout: async () => {
+    const [{ TIMEOUT_DEFAULTS }, { groupTimeOutCampaigns }, { buildTimeOutReport }] = await Promise.all([
+      import('@/advertisers/timeout/config'),
+      import('@/advertisers/timeout/names'),
+      import('./timeout/buildTimeOutReport'),
+    ]);
+    const c = TIMEOUT_DEFAULTS;
+    return {
+      label: 'timeout',
+      version: 'rules v1',
+      rates: [
+        { label: 'Campaign type', value: 'CPC' },
+        { label: 'Client CPC', value: money(c.clientCpc) },
+        { label: 'Client CPM', value: money(c.clientCpm) },
+        { label: 'Click buffer', value: pct(c.clickBuffer) },
+        { label: 'FS service fee', value: pct(c.fsRate) },
+        { label: 'Nova fee', value: `${money(c.novaCpm)} CPM` },
+        { label: 'Minimum margin', value: pct(c.minMargin) },
+        { label: 'Urgent window', value: `${c.urgentDays} days` },
+        { label: 'CTR range', value: `${pct(c.ctrLow)}–${pct(c.ctrHigh)}` },
+      ],
+      urgentDays: c.urgentDays,
+      writeLabel: 'Writing Report, Urgent, Margin Issue and Settings tabs',
+      build: ({ sources, ...run }) => buildTimeOutReport({ ...run, sources, config: c }),
+      groupCheck: (rows) => {
+        const groups = groupTimeOutCampaigns(rows);
+        return {
+          campaignsWithFollowOn: groups.filter((g) => g.members.length > 1).length,
+          orphanFollowOns: groups.filter((g) => !g.hasMain).map((g) => g.members[0]?.item.name ?? g.key),
+        };
+      },
     };
   },
 };
