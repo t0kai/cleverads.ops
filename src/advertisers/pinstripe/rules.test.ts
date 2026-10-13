@@ -37,14 +37,16 @@ describe('calculatePinstripe', () => {
       PINSTRIPE_DEFAULTS,
     );
     const row = r.rows[0];
-    expect(row).toMatchObject({ type: 'Clicks', totalTarget: 1250, targeted: 1375, achieved: 400, required: 975, impressionsNeeded: 60938, impressionsTotal: 85938, budget: 500 });
+    // Still needed = Total 1,250 − 400 = 850 (Targeted keeps its 10% buffer for display only).
+    expect(row).toMatchObject({ type: 'Clicks', totalTarget: 1250, targeted: 1375, achieved: 400, required: 850, impressionsNeeded: 53125, impressionsTotal: 78125, budget: 500 });
     expect(row?.ctr).toBeCloseTo(0.016, 9);
     expect(row?.fsFee).toBeCloseTo(4.5, 9);
-    expect(row?.novaFee).toBeCloseTo(68.7504, 9);
-    expect(row?.netProfit).toBeCloseTo(396.7496, 9);
-    expect(row?.projectedMediaCost).toBeCloseTo(103.1256, 9);
-    expect(row?.projectedNetProfit).toBeCloseTo(312.65516, 9);
-    expect(row?.health).toBe('🟡 Behind | 51/day');
+    expect(row?.novaFee).toBeCloseTo(62.5, 9);
+    expect(row?.netProfit).toBeCloseTo(403, 9);
+    expect(row?.projectedMediaCost).toBeCloseTo(93.75, 9);
+    expect(row?.projectedNetProfit).toBeCloseTo(329.6875, 9);
+    expect(row?.health).toBe(campaignHealth(day(1), day(30), 1250, 400, today, PINSTRIPE_DEFAULTS));
+    expect(row?.health).toMatch(/\| 45\/day$/); // 850 ÷ 19 days
     expect(r.clickCampaigns).toBe(1);
     expect(r.marginIssues.map((g) => g.key)).toEqual(['harbour tea - launch']);
   });
@@ -55,11 +57,11 @@ describe('calculatePinstripe', () => {
       PINSTRIPE_DEFAULTS,
     );
     const row = r.rows[0];
-    expect(row).toMatchObject({ type: 'Impressions', targeted: 385000, achieved: 200000, required: 185000, impressionsNeeded: 185000, impressionsTotal: 385000, budget: 2000 });
-    expect(row?.novaFee).toBeCloseTo(308, 9);
-    expect(row?.netProfit).toBeCloseTo(1554, 9);
-    expect(row?.projectedNetProfit).toBeCloseTo(1426.35, 9);
-    expect(row?.projectedMargin).toBeCloseTo(0.713175, 9);
+    expect(row).toMatchObject({ type: 'Impressions', targeted: 385000, achieved: 200000, required: 150000, impressionsNeeded: 150000, impressionsTotal: 350000, budget: 2000 });
+    expect(row?.novaFee).toBeCloseTo(280, 9);
+    expect(row?.netProfit).toBeCloseTo(1582, 9);
+    expect(row?.projectedNetProfit).toBeCloseTo(1478.5, 9);
+    expect(row?.projectedMargin).toBeCloseTo(0.73925, 9);
     expect(r.impressionCampaigns).toBe(1);
     expect(r.warnings).toEqual([]);
     // Impression IO margin: revenue at the budget rate, 200,000 × 2,000 ÷ 350,000.
@@ -88,10 +90,10 @@ describe('calculatePinstripe', () => {
       PINSTRIPE_DEFAULTS,
     );
     const [main, second] = r.rows;
-    // One target, on the main IO; what is still needed (1,375 − 900 − 100) on the last IO; campaign health on both.
+    // One target, on the main IO; what is still needed (Total 1,250 − 900 − 100) on the last IO; campaign health on both.
     expect(main).toMatchObject({ isLatest: false, targeted: 1375, required: null, impressionsNeeded: null, budget: 500 });
-    expect(second).toMatchObject({ isChild: true, isLatest: true, targeted: null, achieved: 100, required: 375, budget: null, start: day(1), end: day(30) });
-    expect(main?.health).toBe(campaignHealth(day(1), day(30), 1375, 1000, day(11), PINSTRIPE_DEFAULTS));
+    expect(second).toMatchObject({ isChild: true, isLatest: true, targeted: null, achieved: 100, required: 250, budget: null, start: day(1), end: day(30) });
+    expect(main?.health).toBe(campaignHealth(day(1), day(30), 1250, 1000, day(11), PINSTRIPE_DEFAULTS));
     expect(second?.health).toBe(main?.health);
     expect(r.groups).toHaveLength(1);
     // Each IO's own margin on clicks delivered (CPC 0.40), and the campaign overall.
@@ -149,6 +151,8 @@ describe('Pinstripe Report tab', () => {
     expect(cell(0, 6)).toBe('=IF($B2="Impressions",J2,I2)');
     expect(cell(0, 5)).toBe('=IF(E2="","",ROUND(E2+(E2*10%),0))');
     expect(String(cell(0, 17))).toContain('SUMIF($AD$2:$AD,$AD2,$N$2:$N)');
+    // Still needed: Total target (E, no buffer) − every IO's delivery.
+    expect(cell(0, 7)).toBe('=IFERROR(IF($E$2="","",MAX($E$2-SUMIF($AD$2:$AD,$AD2,$G$2:$G),0)),"")');
   });
 
   it('IO and overall margin columns, with the impression rate taken from the first IO', () => {

@@ -149,11 +149,12 @@ export function calculatePinstripe(input: PinstripeInput, config: PinstripeConfi
     }
 
     // One target per campaign: Targeted sits on the main IO only. Every IO's delivery counts towards it,
-    // and what is still needed is shown once, on the last IO (Oct 2026).
+    // and what is still needed (Total, without the buffer, minus every IO's delivery) is shown once, on the last IO (Oct 2026).
     const achievedOf = (m: { item: Dv360Row }) => (type === 'Impressions' ? m.item.impressions : m.item.clicks);
     const groupTargeted = g.hasMain && parent.target != null ? sheetRound(parent.target + parent.target * config.targetBuffer, 0) : null;
     const groupAchieved = sumBlanks(g.members.map(achievedOf));
-    const groupRequired = groupTargeted == null ? null : Math.max(groupTargeted - groupAchieved, 0);
+    const groupTotal = g.hasMain ? parent.target : null;
+    const groupRequired = groupTotal == null ? null : Math.max(groupTotal - groupAchieved, 0);
 
     const partial: Draft[] = [];
     g.members.forEach((m, i) => {
@@ -210,7 +211,7 @@ export function calculatePinstripe(input: PinstripeInput, config: PinstripeConfi
         novaFee: P,
         budget: Q,
         // Health on every IO: the whole campaign's pace (all IOs' delivery against the target).
-        health: campaignHealth(start, end, groupTargeted, groupAchieved, today, config),
+        health: campaignHealth(start, end, groupTotal, groupAchieved, today, config),
         daysLeft: daysLeft(end, today),
         comment: isChild && !g.hasMain && i === 0 ? 'Main campaign not in CSV – target not calculated' : '',
         projectedMediaCost: W,

@@ -132,10 +132,11 @@ export function calculateTimeOut(input: TimeOutInput, config: TimeOutConfig): Ti
     }
 
     // One target per campaign: Targeted sits on the main IO only. Every IO's clicks count towards it,
-    // and what is still needed is shown once, on the last IO (Oct 2026).
+    // and what is still needed (Total, without the buffer, minus every IO's delivery) is shown once, on the last IO (Oct 2026).
     const groupTargeted = g.hasMain && parent.clicks != null ? sheetRound(parent.clicks + parent.clicks * config.clickBuffer, 0) : null;
     const groupAchieved = sumBlanks(g.members.map((m) => m.item.clicks));
-    const groupRequired = groupTargeted == null ? null : Math.max(groupTargeted - groupAchieved, 0);
+    const groupTotal = g.hasMain ? parent.clicks : null;
+    const groupRequired = groupTotal == null ? null : Math.max(groupTotal - groupAchieved, 0);
 
     const drafts: Draft[] = [];
     g.members.forEach((m, i) => {
@@ -180,8 +181,8 @@ export function calculateTimeOut(input: TimeOutInput, config: TimeOutConfig): Ti
         fsFee: L * config.fsRate,
         novaFee: N,
         budget: isChild || D == null ? null : D * config.clientCpc,
-        // Health on every IO: the whole campaign's pace (all IOs' clicks against the target).
-        health: campaignHealth(start, end, groupTargeted, groupAchieved, today, config),
+        // Health on every IO: the whole campaign's pace (all IOs' clicks against Total Clicks).
+        health: campaignHealth(start, end, groupTotal, groupAchieved, today, config),
         daysLeft: daysLeft(end, today),
         comment: isChild && !g.hasMain && i === 0 ? 'Main campaign not in CSV – target not calculated' : '',
         projectedMediaCost: isLatest ? (I > 0 && K != null ? (L / I) * K : L) : L,

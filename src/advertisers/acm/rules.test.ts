@@ -64,7 +64,7 @@ describe('calculateAcm edge cases', () => {
     expect(r.rows[1]?.start).toBe(day(1));
     expect(r.rows[1]?.end).toBe(day(30));
     expect(r.rows[1]?.targetedClicks).toBeNull(); // one target per campaign, on the main IO
-    expect(r.rows[1]?.requiredClicks).toBe(90); // 110 − (10 + 10), shown on the last IO
+    expect(r.rows[1]?.requiredClicks).toBe(80); // Total 100 − (10 + 10), shown on the last IO
   });
   it('zero impressions never divides by zero', () => {
     const r = calculateAcm(
@@ -108,13 +108,13 @@ describe('one target per campaign, every IO live', () => {
   );
   const [main, second] = r.rows;
 
-  it('shows Targeted on the main IO and what is still needed (target − all clicks) on the last IO', () => {
+  it('shows Targeted on the main IO and what is still needed (Total − all clicks) on the last IO', () => {
     expect(main).toMatchObject({ targetedClicks: 550, requiredClicks: null, impressionsNeeded: null, isLatest: false });
-    expect(second).toMatchObject({ targetedClicks: null, requiredClicks: 410, isLatest: true }); // 550 − (100 + 40)
+    expect(second).toMatchObject({ targetedClicks: null, requiredClicks: 360, isLatest: true }); // Total 500 − (100 + 40); no 10% buffer
   });
 
   it('shows the campaign health on every IO', () => {
-    expect(main?.health).toBe(campaignHealth(day(1), day(20), 550, 140, day(3), ACM_DEFAULTS));
+    expect(main?.health).toBe(campaignHealth(day(1), day(20), 500, 140, day(3), ACM_DEFAULTS));
     expect(second?.health).toBe(main?.health);
     expect(main?.health).not.toContain('Running with');
   });
@@ -130,7 +130,9 @@ describe('one target per campaign, every IO live', () => {
   it('costs the clicks still to come only once, so the projected margin does not drop', () => {
     expect(main?.novaFee).toBeCloseTo(8, 12); // spent impressions only
     expect(main?.projectedMediaCost).toBe(10);
-    expect(second?.novaFee).toBeCloseTo(45, 9); // (5,000 + 51,250) ÷ 1,000 × 0.8
-    expect(main?.projectedNetProfit).toBeCloseTo(300 - (10 + 56.25) * 1.15 - 53, 9);
+    expect(second?.impressionsNeeded).toBe(45000); // 360 ÷ 0.8% CTR
+    expect(second?.novaFee).toBeCloseTo(40, 9); // (5,000 + 45,000) ÷ 1,000 × 0.8
+    expect(second?.projectedMediaCost).toBeCloseTo(50, 9); // 5 ÷ 5,000 × 50,000
+    expect(main?.projectedNetProfit).toBeCloseTo(300 - (10 + 50) * 1.15 - 48, 9);
   });
 });

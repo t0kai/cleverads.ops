@@ -4,6 +4,7 @@ import { readDv360Csv } from '@/engine/csv/dv360';
 import { normalizeKey } from '@/engine/grouping/names';
 import { convertSerialZone, serialFromDmy, serialFromYmd } from '@/engine/dates/serial';
 import { acmModule } from '@/advertisers/acm';
+import { campaignHealth } from '@/advertisers/acm/rules';
 import type { AcmRow } from '@/advertisers/acm';
 import type { TargetRow } from '@/advertisers/types';
 
@@ -49,12 +50,65 @@ const result = run(golden.today);
 const DISPLAY_2DP = new Set(['ctr', 'margin', 'projectedMargin', 'projectedMediaCost', 'projectedNetProfit']);
 
 /**
- * Oct 2026 change for campaigns with a 2nd/3rd IO: no IO is stopped any more. Targeted Clicks sit on the main IO
- * only, what is still needed is shown once on the last IO (target − all IOs' clicks), and every IO shows the
- * campaign's Health. The last IO's Required and every money figure (fees, budget, profit, margin, projections)
- * must still match the report exactly.
+ * Oct 2026 changes:
+ * - No IO is stopped any more. Targeted Clicks sit on the main IO only, what is still needed is shown once on the
+ *   last IO, and every IO shows the campaign's Health.
+ * - What is still needed = Total Clicks (no 10% buffer) − every IO's clicks; Health paces against Total Clicks too.
+ * Figures the change does not touch must still match the report exactly. Figures that follow from Required are
+ * worked out here from the report's own inputs under the new rule (REQUIRED_FIELDS / HEAD_FIELDS).
  */
 const BLANK_ON_EARLIER_IOS = ['requiredClicks', 'impressionsNeeded', 'impressionsTotal'] as const;
+const REQUIRED_FIELDS = ['requiredClicks', 'impressionsNeeded', 'impressionsTotal', 'novaFee', 'projectedMediaCost'] as const;
+const HEAD_FIELDS = ['netProfit', 'margin', 'projectedNetProfit', 'projectedMargin'] as const;
+const num = (v: unknown): number | null => (typeof v === 'number' ? v : null);
+
+/** The report's inputs, re-run under the new rule. Keyed by row index. */
+const derived = (() => {
+  const out = new Map<number, Record<string, number | null>>();
+  const byGroup = new Map<string, number[]>();
+  result.rows.forEach((r, i) => byGroup.set(r.groupKey, [...(byGroup.get(r.groupKey) ?? []), i]));
+  for (const idx of byGroup.values()) {
+    const e = (i: number) => golden.expected[i] ?? {};
+    const head = idx[0] as number;
+    const last = idx[idx.length - 1] as number;
+    const total = result.rows[head]?.isChild ? null : num(e(head)['totalClicks']);
+    const achieved = idx.reduce((s, i) => s + (num(e(i)['achievedClicks']) ?? 0), 0);
+    const required = total == null ? null : Math.max(total - achieved, 0);
+    const clicks = num(e(last)['achievedClicks']) ?? 0;
+    const impressions = num(e(last)['impressions']) ?? 0;
+    const media = num(e(last)['mediaCost']) ?? 0;
+    const ctr = impressions === 0 ? null : clicks / impressions;
+    const needed = required == null || ctr == null || ctr === 0 ? null : Math.round(required / ctr);
+    const totalImpr = needed == null ? null : impressions + needed;
+    const lastRow = {
+      requiredClicks: required,
+      impressionsNeeded: needed,
+      impressionsTotal: totalImpr,
+      novaFee: totalImpr == null ? null : (totalImpr / 1000) * config.novaCpm,
+      projectedMediaCost: impressions > 0 && totalImpr != null ? (media / impressions) * totalImpr : media,
+    };
+    out.set(last, { ...(out.get(last) ?? {}), ...lastRow });
+    const nova = (i: number) => (i === last ? lastRow.novaFee : num(e(i)['novaFee'])) ?? 0;
+    const proj = (i: number) => (i === last ? lastRow.projectedMediaCost : num(e(i)['projectedMediaCost'])) ?? 0;
+    const budget = num(e(head)['budget']);
+    const sum = (f: (i: number) => number) => idx.reduce((s, i) => s + f(i), 0);
+    const sumMedia = sum((i) => num(e(i)['mediaCost']) ?? 0);
+    const sumFs = sum((i) => num(e(i)['fsFee']) ?? 0);
+    const has = budget != null && budget !== 0;
+    const np = has ? budget - sumMedia - sumFs - sum(nova) : null;
+    const pnp = has ? budget - sum(proj) * (1 + config.fsRate) - sum(nova) : null;
+    out.set(head, {
+      ...(out.get(head) ?? {}),
+      netProfit: np,
+      margin: np == null || budget == null ? null : np / budget,
+      projectedNetProfit: pnp,
+      projectedMargin: pnp == null || budget == null ? null : pnp / budget,
+      groupTotal: total,
+      groupAchieved: achieved,
+    });
+  }
+  return out;
+})();
 
 function close(actual: number | null, expected: number | null, key: string): boolean {
   if (expected == null) return actual == null;
@@ -83,33 +137,50 @@ describe('ACM golden test · 2 Oct 2026', () => {
       expect(row).toBeDefined();
       const multi = (result.groups.find((g) => g.key === row?.groupKey)?.rows.length ?? 1) > 1;
       const earlier = row?.isLatest === false;
+      const mine = derived.get(i) ?? {};
       for (const key of numeric) {
         if (earlier && (BLANK_ON_EARLIER_IOS as readonly string[]).includes(key)) continue;
         if (row?.isChild && key === 'targetedClicks') continue;
         const actual = row?.[key] as number | null;
+        const newRule = (row?.isLatest && (REQUIRED_FIELDS as readonly string[]).includes(key)) || (row?.isHead && (HEAD_FIELDS as readonly string[]).includes(key));
+        if (newRule) {
+          const expected = mine[key] ?? null;
+          expect(expected == null ? actual == null : actual != null && Math.abs(actual - expected) < 1e-6, `${key}: got ${actual}, new rule gives ${expected}`).toBe(true);
+          continue;
+        }
         const expected = exp[key] as number | null;
         expect(close(actual, expected, key), `${key}: got ${actual}, sheet shows ${expected}`).toBe(true);
       }
       if (earlier) for (const key of BLANK_ON_EARLIER_IOS) expect(row?.[key], key).toBeNull();
       if (row?.isChild) expect(row.targetedClicks).toBeNull();
-      if (!multi && exp['health']) expect(row?.health).toBe(exp['health']);
+      const head = derived.get(result.rows.findIndex((r) => r.groupKey === row?.groupKey)) ?? {};
+      expect(row?.health).toBe(campaignHealth(row?.start ?? null, row?.end ?? null, head['groupTotal'] ?? null, head['groupAchieved'] ?? 0, result.today, config));
       if (multi) expect(row?.health).not.toContain('Running with');
     });
   });
 
-  it('matches the sheet for the Campaign 04 example (main + 2nd IO) (2nd: 875 required, group profit 837.61)', () => {
+  it('Campaign 04 example (main + 2nd IO): still needed = 2,000 − (1,147 + 178) = 675, on the 2nd IO', () => {
     const g = result.groups[3];
-    expect(g?.rows[1]?.requiredClicks).toBe(875);
-    expect(g?.head.projectedNetProfit?.toFixed(2)).toBe('837.61');
+    expect(g?.rows[0]?.requiredClicks).toBeNull();
+    expect(g?.rows[1]?.requiredClicks).toBe(675);
+    expect(g?.head.targetedClicks).toBe(2200); // Targeted keeps its 10% buffer on the main IO
   });
 
-  it('puts the same campaigns in the Urgent and Margin Issue tabs as the report did', () => {
+  it('Urgent tab as the report did; Margin Issues follow the new margins (23 → 21 campaigns)', () => {
     const count = (gs: typeof result.urgent) => gs.reduce((n, g) => n + g.rows.length, 0);
     expect(result.urgent).toHaveLength(golden.tabs.urgentGroups);
     expect(count(result.urgent)).toBe(golden.tabs.urgentRows);
-    expect(result.marginIssues).toHaveLength(golden.tabs.marginGroups);
-    expect(count(result.marginIssues)).toBe(golden.tabs.marginRows);
-    expect(result.marginIssues[0]?.head.projectedMargin?.toFixed(4)).toBe('0.5208');
+    // Fewer clicks still needed means fewer impressions to buy, so two campaigns climb back over 75%.
+    const flagged = result.groups
+      .filter((g) => {
+        const m = derived.get(result.rows.findIndex((r) => r.groupKey === g.key))?.['projectedMargin'];
+        return m != null && m < config.minMargin && !(g.head.end != null && Math.floor(g.head.end) < result.today);
+      })
+      .map((g) => g.key);
+    expect(result.marginIssues.map((g) => g.key).sort()).toEqual(flagged.sort());
+    expect(result.marginIssues).toHaveLength(21);
+    expect(count(result.marginIssues)).toBe(30);
+    expect(result.marginIssues[0]?.head.projectedMargin?.toFixed(4)).toBe('0.5741');
   });
 
   it('shows tracker dates as the report does (5 Sep 00:00 Sydney = 4 Sep 20:00 Dhaka)', () => {
@@ -123,7 +194,7 @@ describe('ACM golden test · 2 Oct 2026', () => {
     expect(spec.rows).toHaveLength(49);
     expect(spec.hiddenColumns).toEqual([28]);
     expect(spec.rows[3]?.[6]?.value).toBeNull(); // main IO (sheet row 5): Required shown on the last IO only
-    expect(spec.rows[4]?.[6]?.value).toBe('=IFERROR(IF($E$5="","",MAX($E$5-SUMIF($AB$2:$AB,$AB6,$F$2:$F),0)),"")');
+    expect(spec.rows[4]?.[6]?.value).toBe('=IFERROR(IF($D$5="","",MAX($D$5-SUMIF($AB$2:$AB,$AB6,$F$2:$F),0)),"")'); // Total Clicks − all IOs
     expect(spec.rows[4]?.[4]?.value).toBeNull(); // Targeted on the main IO only
   });
 });
@@ -131,13 +202,12 @@ describe('ACM golden test · 2 Oct 2026', () => {
 describe('ACM golden test · 3 Oct 2026 (TODAY moves on)', () => {
   const r3 = run(golden.recalculated3Oct.today);
 
-  it('matches Campaign Health and Remaining Days as the report showed them (campaigns with a 2nd IO now show the campaign health)', () => {
-    const single = r3.rows.map((r, i) => [r3.groups.find((g) => g.key === r.groupKey)?.rows.length === 1, i] as const).filter(([s]) => s).map(([, i]) => i);
-    expect(single).toHaveLength(27);
-    expect(single.map((i) => [r3.rows[i]?.health, r3.rows[i]?.daysLeft])).toEqual(
-      single.map((i) => [golden.recalculated3Oct.rows[i]?.health, golden.recalculated3Oct.rows[i]?.daysLeft]),
-    );
+  it('Remaining Days as the report showed them; Health paces every IO against Total Clicks', () => {
     expect(r3.rows.map((r) => r.daysLeft)).toEqual(golden.recalculated3Oct.rows.map((r) => r.daysLeft));
+    for (const r of r3.rows) {
+      const head = derived.get(r3.rows.findIndex((x) => x.groupKey === r.groupKey)) ?? {};
+      expect(r.health, r.name).toBe(campaignHealth(r.start, r.end, head['groupTotal'] ?? null, head['groupAchieved'] ?? 0, r3.today, config));
+    }
     expect(r3.rows.filter((r) => !r.isLatest)).toHaveLength(11);
     expect(r3.rows.every((r) => !r.health.includes('Running with'))).toBe(true);
   });

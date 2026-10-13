@@ -156,11 +156,12 @@ export function calculateAcm(input: ModuleInput, config: AcmConfig): AcmResult {
     });
 
     // One target per campaign: Targeted sits on the main IO only. Every IO's clicks count towards it,
-    // and what is still needed is shown once, on the last IO (Oct 2026).
+    // and what is still needed (Total, without the buffer, minus every IO's delivery) is shown once, on the last IO (Oct 2026).
     const main = drafts[0];
     const groupTargeted = main && !main.isChild && main.total != null ? sheetRound(main.total + main.total * config.clickBuffer, 0) : null;
     const groupAchieved = sumBlanks(drafts.map((d) => d.row.clicks));
-    const groupRequired = groupTargeted == null ? null : Math.max(groupTargeted - groupAchieved, 0);
+    const groupTotal = main && !main.isChild ? main.total : null;
+    const groupRequired = groupTotal == null ? null : Math.max(groupTotal - groupAchieved, 0);
 
     const partial: Omit<AcmRow, 'netProfit' | 'margin' | 'projectedNetProfit' | 'projectedMargin' | 'ioMargin' | 'overallMargin'>[] = [];
     drafts.forEach((d) => {
@@ -180,8 +181,8 @@ export function calculateAcm(input: ModuleInput, config: AcmConfig): AcmResult {
       const O = d.isChild || D == null ? null : D * config.clientCpc;
       const U = d.isLatest ? (I > 0 && K != null ? (L / I) * K : L) : L;
 
-      // Health on every IO: the whole campaign's pace (all IOs' clicks against the target).
-      const health = campaignHealth(d.start, d.end, groupTargeted, groupAchieved, today, config);
+      // Health on every IO: the whole campaign's pace (all IOs' clicks against Total Clicks).
+      const health = campaignHealth(d.start, d.end, groupTotal, groupAchieved, today, config);
 
       partial.push({
         name: d.row.name,

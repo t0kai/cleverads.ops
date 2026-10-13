@@ -103,8 +103,8 @@ describe('report sheet requests', () => {
     expect(out[0]?.values).toHaveLength(28);
     expect(out[0]?.values[0]?.userEnteredValue).toEqual({ stringValue: 'Alpha - 1' });
     expect(out[0]?.values[6]?.userEnteredValue).toBeUndefined(); // G: blank on the main IO
-    expect(out[1]?.values[6]?.userEnteredValue).toEqual({ formulaValue: '=IFERROR(IF($E$2="","",MAX($E$2-SUMIF($AB$2:$AB,$AB3,$F$2:$F),0)),"")' }); // G on the last IO
-    expect(String(out[0]?.values[17]?.userEnteredValue?.formulaValue)).toContain('SUMIF($AB$2:$AB,$AB2,$F$2:$F)>=$E$2'); // R: campaign health
+    expect(out[1]?.values[6]?.userEnteredValue).toEqual({ formulaValue: '=IFERROR(IF($D$2="","",MAX($D$2-SUMIF($AB$2:$AB,$AB3,$F$2:$F),0)),"")' }); // G on the last IO: Total − all IOs
+    expect(String(out[0]?.values[17]?.userEnteredValue?.formulaValue)).toContain('SUMIF($AB$2:$AB,$AB2,$F$2:$F)>=$D$2'); // R: campaign health against Total Clicks
     expect(String(out[1]?.values[17]?.userEnteredValue?.formulaValue)).toContain('Completed'); // health on the 2nd too
     expect(out[0]?.values[13]?.userEnteredValue).toEqual({ formulaValue: '=IF(I2="","",(I2/1000)*0.8)' }); // N: earlier IO costed on spend
     expect(out[0]?.values[20]?.userEnteredValue).toEqual({ formulaValue: '=L2' }); // U: earlier IO projects what it spent

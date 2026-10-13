@@ -54,9 +54,9 @@ describe('calculateTimeOut', () => {
     const [main, second, third] = r.rows;
     expect(main).toMatchObject({ campaignType: 'CPC', totalClicks: 3000, targetedClicks: 3300, requiredClicks: null, budget: 900, isLatest: false });
     expect(second).toMatchObject({ isChild: true, targetedClicks: null, requiredClicks: null, budget: null, isLatest: false });
-    expect(third).toMatchObject({ isChild: true, targetedClicks: null, requiredClicks: 3300 - 136 - 124 - 21, isLatest: true });
-    // Campaign health on every IO: 281 of 3,300 clicks on day 11 of 30, 3,019 still needed over 19 days.
-    expect(r.rows.map((x) => x.health)).toEqual(['🔴 Critical | 159/day', '🔴 Critical | 159/day', '🔴 Critical | 159/day']);
+    expect(third).toMatchObject({ isChild: true, targetedClicks: null, requiredClicks: 3000 - 136 - 124 - 21, isLatest: true }); // Total − all IOs, no buffer
+    // Campaign health on every IO: 281 of 3,000 clicks on day 11 of 30, 2,719 still needed over 19 days.
+    expect(r.rows.map((x) => x.health)).toEqual(['🔴 Critical | 143/day', '🔴 Critical | 143/day', '🔴 Critical | 143/day']);
   });
 
   it('gives each IO its own margin on delivered clicks, and the campaign an overall margin', () => {
@@ -81,6 +81,19 @@ describe('calculateTimeOut', () => {
     expect(main?.netProfit).toBeCloseTo(900 - media - media * 0.15 - r.rows.reduce((s, x) => s + (x.novaFee ?? 0), 0), 9);
     expect(main?.margin).toBeCloseTo((main?.netProfit ?? 0) / 900, 12);
     expect(r.warnings).toEqual([]);
+  });
+
+  it('three IOs: still needed = Total Clicks − (1st + 2nd + 3rd), on the 3rd only (13 Oct report check)', () => {
+    const three = calculateTimeOut(
+      {
+        today,
+        rows: [io('Sparkling Co | Gala', 208, 20000, 10), io('Sparkling Co | Gala 2nd', 184, 18000, 9), io('Sparkling Co | Gala 2nd 3rd', 74, 7000, 4)],
+        targets: new Map([['sparkling co | gala', target({ clicks: 3000 })]]),
+      },
+      TIMEOUT_DEFAULTS,
+    );
+    expect(three.rows.map((x) => x.requiredClicks)).toEqual([null, null, 2534]); // 3,000 − (208 + 184 + 74)
+    expect(three.rows[0]?.targetedClicks).toBe(3300); // Targeted still shows the 10% buffer, on the main IO
   });
 
   it('warns when the tracker has no target, and comments a lone 2nd IO', () => {
@@ -127,9 +140,9 @@ describe('Time Out Report tab', () => {
     expect(cell(0, 5)).toBe('=IF(E2="","",ROUND(E2+(E2*10%),0))'); // Targeted on the main IO
     expect(cell(1, 5)).toBeNull();
     expect(cell(0, 7)).toBeNull(); // Required only on the last IO
-    expect(cell(1, 7)).toBe('=IFERROR(IF($F$2="","",MAX($F$2-SUMIF($AC$2:$AC,$AC3,$G$2:$G),0)),"")');
-    expect(String(cell(0, 18))).toContain('SUMIF($AC$2:$AC,$AC2,$G$2:$G)>=$F$2'); // campaign health on every IO
-    expect(cell(2, 7)).toBe('=IFERROR(IF($F$4="","",MAX($F$4-SUMIF($AC$2:$AC,$AC4,$G$2:$G),0)),"")'); // single IO: its own row
+    expect(cell(1, 7)).toBe('=IFERROR(IF($E$2="","",MAX($E$2-SUMIF($AC$2:$AC,$AC3,$G$2:$G),0)),"")'); // Total − all IOs
+    expect(String(cell(0, 18))).toContain('SUMIF($AC$2:$AC,$AC2,$G$2:$G)>=$E$2'); // campaign health on every IO, against Total
+    expect(cell(2, 7)).toBe('=IFERROR(IF($E$4="","",MAX($E$4-SUMIF($AC$2:$AC,$AC4,$G$2:$G),0)),"")'); // single IO: its own row
   });
 
   it('every formula has balanced brackets and quotes', () => {

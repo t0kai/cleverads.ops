@@ -29,7 +29,7 @@ const pct = (rate: number) => `${+(rate * 100).toFixed(6)}%`;
 const iferror = (f: string) => `=IFERROR(${f.replace(/^=/, '')},"")`;
 
 /**
- * Campaign Health for row x. `tgt` is the campaign's Targeted (main IO) and `ach` all its IOs' delivery,
+ * Campaign Health for row x. `tgt` is the campaign's Total target (main IO, no buffer) and `ach` all its IOs' delivery,
  * so every IO of a campaign shows the campaign's pace and what is still needed per day.
  */
 function healthFormula(x: number, tgt: string, ach: string, c: PinstripeConfig): string {
@@ -61,7 +61,8 @@ function rowCells(r: PinstripeRow, x: number, h: number, c: PinstripeConfig): Sh
 
   // One target per campaign, on the main IO. Every IO's delivery (column G) counts towards it.
   const F = r.isChild ? null : `=IF(E${x}="","",ROUND(E${x}+(E${x}*${pct(c.targetBuffer)}),0))`;
-  const tgt = `$F$${h}`;
+  // Still needed and Health count from the Total target (no buffer), minus every IO's delivery.
+  const tgt = `$E$${h}`;
   const ach = sumIf('G');
 
   const cells: (string | number | null)[] = [

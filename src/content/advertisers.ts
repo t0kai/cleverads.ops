@@ -38,7 +38,7 @@ export const SEED_ADVERTISERS: readonly AdvertiserSummary[] = [
     id: 'acm',
     name: 'ACM',
     moduleId: 'acm',
-    rulesVersion: 'v2',
+    rulesVersion: 'v3',
     timeZone: 'Australia/Sydney',
     sources: {
       trackerId: '157r8wGSMc11tV6jvRCny3JxUlHLxOose_HMikAm8BY8',
@@ -54,7 +54,7 @@ export const SEED_ADVERTISERS: readonly AdvertiserSummary[] = [
     id: 'pinstripe',
     name: 'Pinstripe',
     moduleId: 'pinstripe',
-    rulesVersion: 'v1',
+    rulesVersion: 'v2',
     timeZone: 'Australia/Sydney',
     sources: {
       // Same CAMPAIGN TRACKER GLOBAL file as ACM, Pinstripe's own tab. Read only.
@@ -70,7 +70,7 @@ export const SEED_ADVERTISERS: readonly AdvertiserSummary[] = [
     id: 'timeout',
     name: 'Time Out',
     moduleId: 'timeout',
-    rulesVersion: 'v1',
+    rulesVersion: 'v2',
     timeZone: 'Australia/Sydney',
     sources: {
       // Same CAMPAIGN TRACKER GLOBAL file, Time Out's own tab. Read only.

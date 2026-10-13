@@ -30,7 +30,7 @@ const pct = (rate: number) => `${+(rate * 100).toFixed(6)}%`;
 const iferror = (f: string) => `=IFERROR(${f.replace(/^=/, '')},"")`;
 
 /**
- * Campaign Health for row x. `tgt` is the campaign's Targeted Clicks (main IO) and `ach` all its IOs' clicks,
+ * Campaign Health for row x. `tgt` is the campaign's Total Clicks (main IO, no buffer) and `ach` all its IOs' clicks,
  * so every IO of a campaign shows the campaign's pace and the clicks still needed per day.
  */
 function healthFormula(x: number, tgt: string, ach: string, c: TimeOutConfig): string {
@@ -45,7 +45,7 @@ function healthFormula(x: number, tgt: string, ach: string, c: TimeOutConfig): s
   );
 }
 
-/** `h` is the sheet row of the campaign's first IO (it holds Targeted Clicks). */
+/** `h` is the sheet row of the campaign's first IO (it holds Total and Targeted Clicks). */
 function rowCells(r: TimeOutRow, x: number, h: number, c: TimeOutConfig): SheetCell[] {
   const wrap = (f: string) => (r.isChild ? iferror(f) : f);
   const sumIf = (col: string) => `SUMIF($AC$2:$AC,$AC${x},$${col}$2:$${col})`;
@@ -56,7 +56,8 @@ function rowCells(r: TimeOutRow, x: number, h: number, c: TimeOutConfig): SheetC
 
   // One target per campaign, on the main IO. Every IO's clicks count towards it.
   const F = r.isChild ? null : `=IF(E${x}="","",ROUND(E${x}+(E${x}*${pct(c.clickBuffer)}),0))`;
-  const tgt = `$F$${h}`;
+  // Still needed and Health count from Total Clicks (no buffer), minus every IO's clicks.
+  const tgt = `$E$${h}`;
   const ach = sumIf('G');
 
   const cells: (string | number | null)[] = [

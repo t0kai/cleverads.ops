@@ -34,7 +34,7 @@ const loaders: Record<string, () => Promise<ReportRunner>> = {
     const c = ACM_DEFAULTS;
     return {
       label: 'acm',
-      version: 'rules v2',
+      version: 'rules v3',
       rates: [
         { label: 'Client CPC', value: money(c.clientCpc) },
         { label: 'Click buffer', value: pct(c.clickBuffer) },
@@ -57,7 +57,7 @@ const loaders: Record<string, () => Promise<ReportRunner>> = {
     const c = PINSTRIPE_DEFAULTS;
     return {
       label: 'pinstripe',
-      version: 'rules v1',
+      version: 'rules v2',
       rates: [
         { label: 'Client CPC', value: money(c.clientCpc) },
         { label: 'Impression campaigns', value: `target ≥ ${c.impressionTargetFrom.toLocaleString('en-AU')}` },
@@ -83,7 +83,7 @@ const loaders: Record<string, () => Promise<ReportRunner>> = {
     const c = TIMEOUT_DEFAULTS;
     return {
       label: 'timeout',
-      version: 'rules v1',
+      version: 'rules v2',
       rates: [
         { label: 'Campaign type', value: 'CPC' },
         { label: 'Client CPC', value: money(c.clientCpc) },

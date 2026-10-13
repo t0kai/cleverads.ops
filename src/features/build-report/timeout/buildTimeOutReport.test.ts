@@ -67,11 +67,11 @@ describe('a real-shaped Time Out export', () => {
     const [gin, stage] = r.groups;
     expect(gin?.head.budget).toBe(900);
     expect(stage?.head.budget).toBeCloseTo(2070, 9);
-    expect(gin?.rows[2]?.requiredClicks).toBe(3300 - 136 - 124 - 21);
+    expect(gin?.rows[2]?.requiredClicks).toBe(3000 - 136 - 124 - 21); // Total Clicks − all three IOs
     expect(gin?.rows[0]?.requiredClicks).toBeNull(); // what is still needed shows on the last IO only
     expect(gin?.rows[0]?.health).toBe(gin?.rows[2]?.health); // campaign health on every IO
     expect(gin?.head.overallMargin).not.toBeNull();
-    expect(stage?.rows[2]?.requiredClicks).toBe(7590 - 171 - 341 - 27);
+    expect(stage?.rows[2]?.requiredClicks).toBe(6900 - 171 - 341 - 27);
   });
 });
 
