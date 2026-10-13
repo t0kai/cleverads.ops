@@ -63,12 +63,13 @@ describe('a real-shaped Time Out export', () => {
     ]);
     expect(r.warnings).toEqual([]);
   });
-  it('bills the target at A$0.30 and gives the 3rd IO the clicks still needed per day', () => {
+  it('bills the target at A$0.30 and keeps every IO calculating', () => {
     const [gin, stage] = r.groups;
     expect(gin?.head.budget).toBe(900);
     expect(stage?.head.budget).toBeCloseTo(2070, 9);
     expect(gin?.rows[2]?.requiredClicks).toBe(3300 - 136 - 124 - 21);
-    expect(gin?.rows[2]?.requiredPerDay).toBeGreaterThan(0);
+    expect(gin?.rows[0]?.requiredClicks).toBe(3300 - 136); // every IO stays live
+    expect(gin?.head.overallMargin).not.toBeNull();
     expect(stage?.rows[2]?.requiredClicks).toBe(7590 - 171 - 341 - 27);
   });
 });

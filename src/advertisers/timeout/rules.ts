@@ -30,31 +30,34 @@ export interface TimeOutRow {
   readonly groupKey: string; // AB (hidden)
   readonly isChild: boolean; // a 2nd/3rd IO
   readonly isHead: boolean; // first row of its group (holds Budget/Profit/Margin)
-  readonly superseded: boolean; // a later IO is running
-  readonly nextLabel: string; // "2nd" / "3rd" when a later IO is running
+  /** Last IO of its group. Every IO keeps its own figures; the clicks still to come are costed once, here. */
+  readonly isLatest: boolean;
   readonly start: number | null; // C
   readonly end: number | null; // D
   readonly totalClicks: number | null; // E
   readonly targetedClicks: number | null; // F
   readonly achievedClicks: number; // G
   readonly requiredClicks: number | null; // H
-  readonly requiredPerDay: number | null; // I
-  readonly ctr: number | null; // J
-  readonly impressions: number; // K
-  readonly impressionsNeeded: number | null; // L
-  readonly impressionsTotal: number | null; // M
-  readonly mediaCost: number; // N
-  readonly fsFee: number | null; // O
-  readonly novaFee: number | null; // P
-  readonly budget: number | null; // Q
-  readonly netProfit: number | null; // R
-  readonly margin: number | null; // S
-  readonly health: string; // T
-  readonly daysLeft: number | null; // U
-  readonly comment: string; // V
-  readonly projectedMediaCost: number | null; // W
-  readonly projectedNetProfit: number | null; // X
-  readonly projectedMargin: number | null; // Y
+  readonly ctr: number | null; // I
+  readonly impressions: number; // J
+  readonly impressionsNeeded: number | null; // K
+  readonly impressionsTotal: number | null; // L
+  readonly mediaCost: number; // M
+  readonly fsFee: number | null; // N
+  readonly novaFee: number | null; // O
+  readonly budget: number | null; // P
+  readonly netProfit: number | null; // Q
+  readonly margin: number | null; // R
+  readonly health: string; // S (clicks needed per day are shown here, e.g. "🔴 Critical | 28/day")
+  readonly daysLeft: number | null; // T
+  readonly comment: string; // U
+  readonly projectedMediaCost: number | null; // V
+  readonly projectedNetProfit: number | null; // W
+  readonly projectedMargin: number | null; // X
+  /** Y: this IO's own margin on the clicks it has delivered (clicks × CPC against its media, FS and Nova). */
+  readonly ioMargin: number | null;
+  /** Z (head row): the same for all IOs of the campaign together. */
+  readonly overallMargin: number | null;
 }
 
 export interface TimeOutGroupResult {
@@ -76,7 +79,7 @@ export interface TimeOutResult {
 
 const EMPTY_TARGET: TimeOutTarget = { start: null, end: null, clicks: null };
 
-/** Campaign Health (column T). */
+/** Campaign Health (column S). */
 export function campaignHealth(
   start: number | null,
   end: number | null,
@@ -99,22 +102,23 @@ export function campaignHealth(
   return `🔴 Critical | ${perDay}/day`;
 }
 
-/** Remaining days (column U): MAX(0, ROUNDUP(end − TODAY())). */
+/** Remaining days (column T): MAX(0, ROUNDUP(end − TODAY())). */
 export function daysLeft(end: number | null, today: number): number | null {
   if (end == null) return null;
   return Math.max(0, sheetRoundUp(end - today, 0));
 }
 
 /**
- * Required Clicks / Day (column I): clicks still needed ÷ days left, rounded up.
- * Counts from the start date when the campaign has not started; blank when nothing is needed or it has ended.
+ * Margin on clicks already delivered: (clicks × CPC − media − FS fee − Nova fee on impressions spent) ÷ (clicks × CPC).
+ * Blank when there are no clicks yet.
  */
-export function requiredPerDay(required: number | null, start: number | null, end: number | null, today: number): number | null {
-  if (required == null || required === 0 || end == null || today > end) return null;
-  return sheetRoundUp(required / Math.max(1, end - Math.max(today, start ?? today)), 0);
+export function ioMargin(clicks: number, mediaCost: number, impressions: number, config: Pick<TimeOutConfig, 'clientCpc' | 'fsRate' | 'novaCpm'>): number | null {
+  const revenue = clicks * config.clientCpc;
+  if (revenue <= 0) return null;
+  return (revenue - mediaCost * (1 + config.fsRate) - (impressions / 1000) * config.novaCpm) / revenue;
 }
 
-type Draft = Omit<TimeOutRow, 'netProfit' | 'margin' | 'projectedNetProfit' | 'projectedMargin'>;
+type Draft = Omit<TimeOutRow, 'netProfit' | 'margin' | 'projectedNetProfit' | 'projectedMargin' | 'ioMargin' | 'overallMargin'>;
 
 export function calculateTimeOut(input: TimeOutInput, config: TimeOutConfig): TimeOutResult {
   const { today } = input;
@@ -135,8 +139,7 @@ export function calculateTimeOut(input: TimeOutInput, config: TimeOutConfig): Ti
       const start = parent.start;
       const end = isChild ? (own.end ?? parent.end) : parent.end;
       const D = isChild ? null : parent.clicks;
-      const next = g.members[i + 1];
-      const superseded = next !== undefined;
+      const isLatest = i === g.members.length - 1;
       const prev = drafts[i - 1];
 
       const F = m.item.clicks;
@@ -148,12 +151,13 @@ export function calculateTimeOut(input: TimeOutInput, config: TimeOutConfig): Ti
       else if (prev) E = prev.targetedClicks == null ? null : Math.max(prev.targetedClicks - prev.achievedClicks, 0);
       else E = null;
 
-      let G: number | null = E == null ? null : Math.max(E - F, 0);
-      if (superseded) G = 0;
+      // Every IO keeps running and keeps its own figures (main, 2nd and 3rd can all be live).
+      const G: number | null = E == null ? null : Math.max(E - F, 0);
       const H = I === 0 ? null : F / I;
       const J = G == null || H == null || H === 0 ? null : sheetRound(G / H, 0);
       const K = J == null ? null : I + J;
-      const N = K == null ? null : (K / 1000) * config.novaCpm;
+      // Money: the clicks still to come are costed once, on the latest IO; earlier IOs count what they have spent.
+      const N = isLatest ? (K == null ? null : (K / 1000) * config.novaCpm) : (I / 1000) * config.novaCpm;
 
       drafts.push({
         name: m.item.name,
@@ -161,15 +165,13 @@ export function calculateTimeOut(input: TimeOutInput, config: TimeOutConfig): Ti
         groupKey: g.key,
         isChild,
         isHead: i === 0,
-        superseded,
-        nextLabel: next?.label ?? '',
+        isLatest,
         start,
         end,
         totalClicks: D,
         targetedClicks: E,
         achievedClicks: F,
         requiredClicks: G,
-        requiredPerDay: requiredPerDay(G, start, end, today),
         ctr: H,
         impressions: I,
         impressionsNeeded: J,
@@ -178,10 +180,10 @@ export function calculateTimeOut(input: TimeOutInput, config: TimeOutConfig): Ti
         fsFee: L * config.fsRate,
         novaFee: N,
         budget: isChild || D == null ? null : D * config.clientCpc,
-        health: superseded ? `▶ Running with ${next?.label ?? ''}` : campaignHealth(start, end, E, F, today, config),
+        health: campaignHealth(start, end, E, F, today, config),
         daysLeft: daysLeft(end, today),
         comment: isChild && !g.hasMain && i === 0 ? 'Main campaign not in CSV – target not calculated' : '',
-        projectedMediaCost: I > 0 && K != null ? (L / I) * K : L,
+        projectedMediaCost: isLatest ? (I > 0 && K != null ? (L / I) * K : L) : L,
       });
     });
 
@@ -191,6 +193,12 @@ export function calculateTimeOut(input: TimeOutInput, config: TimeOutConfig): Ti
     const sumN = sumBlanks(drafts.map((r) => r.novaFee));
     const sumU = sumBlanks(drafts.map((r) => r.projectedMediaCost));
 
+    const overall = ioMargin(
+      sumBlanks(drafts.map((r) => r.achievedClicks)),
+      sumL,
+      sumBlanks(drafts.map((r) => r.impressions)),
+      config,
+    );
     const rows: TimeOutRow[] = drafts.map((r) => {
       const O = r.budget;
       const hasBudget = r.isHead && O != null && O !== 0;
@@ -202,6 +210,8 @@ export function calculateTimeOut(input: TimeOutInput, config: TimeOutConfig): Ti
         margin: P == null || O == null ? null : P / O,
         projectedNetProfit: V,
         projectedMargin: V == null || O == null ? null : V / O,
+        ioMargin: ioMargin(r.achievedClicks, r.mediaCost, r.impressions, config),
+        overallMargin: r.isHead ? overall : null,
       };
     });
     const head = rows[0];

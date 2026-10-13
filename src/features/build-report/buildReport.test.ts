@@ -96,29 +96,46 @@ describe('report sheet requests', () => {
     expect(toCellData(Number.NaN)).toEqual({});
   });
 
-  it('puts every Report row in place with the main IO stopped and the 2nd taking over', () => {
+  it('keeps every IO live: main and 2nd both calculate, each with its own margin', () => {
     const data = requests.find((r) => r.updateCells?.start.sheetId === 0 && r.updateCells.start.rowIndex === 1 && r.updateCells.start.columnIndex === 0);
     const out = data?.updateCells.rows as { values: { userEnteredValue?: Record<string, unknown> }[] }[];
     expect(out).toHaveLength(3);
-    expect(out[0]?.values).toHaveLength(26);
+    expect(out[0]?.values).toHaveLength(28);
     expect(out[0]?.values[0]?.userEnteredValue).toEqual({ stringValue: 'Alpha - 1' });
-    expect(out[0]?.values[6]?.userEnteredValue).toEqual({ numberValue: 0 }); // G: main stopped
-    expect(out[0]?.values[17]?.userEnteredValue).toEqual({ stringValue: '▶ Running with 2nd' });
+    expect(out[0]?.values[6]?.userEnteredValue).toEqual({ formulaValue: '=IF(OR(E2="",F2=""),"",MAX(E2-F2,0))' }); // G: main still calculates
+    expect(String(out[0]?.values[17]?.userEnteredValue?.formulaValue)).toContain('Completed'); // R: real health, not "Running with"
+    expect(out[0]?.values[13]?.userEnteredValue).toEqual({ formulaValue: '=IF(I2="","",(I2/1000)*0.8)' }); // N: earlier IO costed on spend
+    expect(out[0]?.values[20]?.userEnteredValue).toEqual({ formulaValue: '=L2' }); // U: earlier IO projects what it spent
     expect(out[1]?.values[4]?.userEnteredValue).toEqual({ formulaValue: '=MAX(E2-F2,0)' }); // 2nd target
-    expect(out[1]?.values[25]?.userEnteredValue).toEqual({ stringValue: 'alpha - 1' }); // hidden group key
+    expect(String(out[1]?.values[23]?.userEnteredValue?.formulaValue)).toBe('=IFERROR((F3*0.6-L3*(1+0.15)-(I3/1000)*0.8)/(F3*0.6),"")'); // X
+    expect(String(out[0]?.values[24]?.userEnteredValue?.formulaValue)).toContain('SUMIF($AB$2:$AB,$AB2,$F$2:$F)'); // Y on the head row
+    expect(out[1]?.values[24]?.userEnteredValue).toBeUndefined();
+    expect(out[1]?.values[27]?.userEnteredValue).toEqual({ stringValue: 'alpha - 1' }); // hidden group key
   });
 
-  it('greys rows with "Running with" and hides the group key column', () => {
+  it('never writes past the Report grid (Google rejects cells outside it)', () => {
+    const cols = requests[0]?.updateSheetProperties.properties.gridProperties.columnCount as number;
+    const report = requests.filter((r) => r.updateCells?.start.sheetId === 0);
+    for (const r of report) {
+      const width = Math.max(...r.updateCells.rows.map((x: { values: unknown[] }) => x.values.length));
+      expect(r.updateCells.start.columnIndex + width).toBeLessThanOrEqual(cols);
+    }
+    const valueTabs = requests.filter((r) => r.updateCells && r.updateCells.start.sheetId !== 0);
+    for (const r of valueTabs) expect(r.updateCells.start.columnIndex + Math.max(...r.updateCells.rows.map((x: { values: unknown[] }) => x.values.length))).toBeLessThanOrEqual(26);
+  });
+
+  it('no longer greys earlier IOs, widens the Report and hides the group key column', () => {
     const grey = requests.filter((r) => r.addConditionalFormatRule?.rule.booleanRule.format.textFormat);
-    expect(grey).toHaveLength(3); // Report, Urgent, Margin Issue
-    expect(grey[0]?.addConditionalFormatRule.rule.booleanRule.condition.values[0].userEnteredValue).toBe('=ISNUMBER(SEARCH("Running with",$R2))');
-    expect(requests.some((r) => r.updateDimensionProperties?.range.startIndex === 25 && r.updateDimensionProperties.properties.hiddenByUser)).toBe(true);
+    expect(grey).toHaveLength(0);
+    expect(requests[0]?.updateSheetProperties.properties.gridProperties.columnCount).toBe(30);
+    expect(requests.some((r) => r.updateDimensionProperties?.range.startIndex === 27 && r.updateDimensionProperties.properties.hiddenByUser)).toBe(true);
   });
 
   it('fills Urgent with values and writes "No campaigns match." on an empty tab', () => {
     const urgentRows = requests.find((r) => r.updateCells?.start.sheetId === 1001)?.updateCells.rows;
     expect(urgentRows).toHaveLength(2); // Alpha ends in 7 days: main + 2nd
-    expect(urgentRows[0].values[17]).toEqual({ userEnteredValue: { stringValue: '▶ Running with 2nd' } });
+    expect(urgentRows[0].values).toHaveLength(25);
+    expect(urgentRows[0].values[23].userEnteredValue.numberValue).toBeCloseTo(0.675, 9); // main IO margin
     const marginRows = requests.find((r) => r.updateCells?.start.sheetId === 1002)?.updateCells.rows;
     expect(result.marginIssues.length ? marginRows.length : marginRows[0].values[0]).toEqual(
       result.marginIssues.length ? result.marginIssues.reduce((n, g) => n + g.rows.length, 0) : { userEnteredValue: { stringValue: 'No campaigns match.' } },

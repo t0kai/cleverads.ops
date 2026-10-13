@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { serialFromYmd } from '@/engine/dates/serial';
 import { ACM_DEFAULTS, parseAcmConfig } from './config';
-import { calculateAcm, campaignHealth, daysLeft } from './rules';
+import { calculateAcm, campaignHealth, daysLeft, ioMargin } from './rules';
 import { ValidationError } from '@/shared/errors';
 
 const day = (d: number) => serialFromYmd(2026, 10, d);
@@ -89,5 +89,42 @@ describe('parseAcmConfig', () => {
     } catch (e) {
       expect((e as ValidationError).issues[0]).toMatch(/CTR/);
     }
+  });
+});
+
+describe('every IO stays live', () => {
+  // Main and 2nd both running; numbers worked out by hand. CPC 0.60, FS 15%, Nova A$0.80 CPM.
+  const r = calculateAcm(
+    {
+      today: day(3),
+      rows: [
+        { name: 'Alpha - 1', impressions: 10000, clicks: 100, cost: 10, objective: '', status: '' },
+        { name: 'Alpha - 1 2nd', impressions: 5000, clicks: 40, cost: 5, objective: '', status: '' },
+      ],
+      targets: new Map([['alpha - 1', { start: day(1), end: day(20), clicks: 500 }]]),
+    },
+    ACM_DEFAULTS,
+  );
+  const [main, second] = r.rows;
+
+  it('calculates Required and Health for the main IO too', () => {
+    expect(main).toMatchObject({ targetedClicks: 550, requiredClicks: 450, isLatest: false });
+    expect(main?.health).not.toContain('Running with');
+    expect(second).toMatchObject({ targetedClicks: 450, requiredClicks: 410, isLatest: true });
+  });
+
+  it('gives each IO its own margin and the campaign an overall margin', () => {
+    expect(main?.ioMargin).toBeCloseTo(40.5 / 60, 12); // (60 − 11.5 − 8) ÷ 60
+    expect(second?.ioMargin).toBeCloseTo(14.25 / 24, 12); // (24 − 5.75 − 4) ÷ 24
+    expect(main?.overallMargin).toBeCloseTo(54.75 / 84, 12);
+    expect(second?.overallMargin).toBeNull();
+    expect(ioMargin(0, 5, 1000, ACM_DEFAULTS)).toBeNull();
+  });
+
+  it('costs the clicks still to come only once, so the projected margin does not drop', () => {
+    expect(main?.novaFee).toBeCloseTo(8, 12); // spent impressions only
+    expect(main?.projectedMediaCost).toBe(10);
+    expect(second?.novaFee).toBeCloseTo(45, 9); // (5,000 + 51,250) ÷ 1,000 × 0.8
+    expect(main?.projectedNetProfit).toBeCloseTo(300 - (10 + 56.25) * 1.15 - 53, 9);
   });
 });

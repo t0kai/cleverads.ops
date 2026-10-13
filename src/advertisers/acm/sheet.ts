@@ -12,11 +12,11 @@ export const ACM_HEADERS = [
   'Required Clicks', 'Actual Average CTR', 'Impressions spent', 'Impression needed for required clicks',
   'Required Total Impression', 'Inventory cost', 'FS Service fee', 'Nova fee', 'Budget', 'Net profit',
   'Margin %', 'Campaign Health', 'Remaing Days', 'Comment', 'Projected Media Cost', 'Projected Net Profit',
-  'Projected Margin %', '', 'Last Updated:', 'Group Key',
+  'Projected Margin %', 'IO Margin %', 'Overall Margin %', '', 'Last Updated:', 'Group Key',
 ] as const;
 
-/** Column Z (26th) holds the group key and is hidden. */
-export const GROUP_KEY_COLUMN = 26;
+/** Column AB (28th) holds the group key and is hidden. */
+export const GROUP_KEY_COLUMN = 28;
 
 const pct = (rate: number) => `${+(rate * 100).toFixed(6)}%`;
 const iferror = (f: string) => `=IFERROR(${f.replace(/^=/, '')},"")`;
@@ -35,7 +35,8 @@ function healthFormula(x: number, c: AcmConfig): string {
 
 function rowCells(r: AcmRow, x: number, c: AcmConfig): SheetCell[] {
   const wrap = (f: string) => (r.isChild ? iferror(f) : f);
-  const sumIf = (col: string) => `SUMIF($Z$2:$Z,$Z${x},$${col}$2:$${col})`;
+  const sumIf = (col: string) => `SUMIF($AB$2:$AB,$AB${x},$${col}$2:$${col})`;
+  const fsUp = `(1+${c.fsRate})`;
   const noBudget = `OR(O${x}="",O${x}=0)`;
 
   const E = !r.isChild
@@ -51,23 +52,29 @@ function rowCells(r: AcmRow, x: number, c: AcmConfig): SheetCell[] {
     r.totalClicks,
     E,
     r.achievedClicks,
-    r.superseded ? 0 : wrap(`=IF(OR(E${x}="",F${x}=""),"",MAX(E${x}-F${x},0))`),
+    wrap(`=IF(OR(E${x}="",F${x}=""),"",MAX(E${x}-F${x},0))`),
     wrap(`=IF(OR(F${x}="",I${x}="",I${x}=0),"",F${x}/I${x})`),
     r.impressions,
     wrap(`=IF(OR(G${x}="",H${x}="",H${x}=0),"",ROUND(G${x}/H${x},0))`),
     wrap(`=IF(OR(I${x}="",J${x}=""),"",I${x}+J${x})`),
     r.mediaCost,
     wrap(`=IF(L${x}="","",L${x}*${pct(c.fsRate)})`),
-    wrap(`=IF(K${x}="","",(K${x}/1000)*${c.novaCpm})`),
+    // Nova: the latest IO is costed on the impressions it still needs; earlier IOs on what they have spent.
+    r.isLatest ? wrap(`=IF(K${x}="","",(K${x}/1000)*${c.novaCpm})`) : `=IF(I${x}="","",(I${x}/1000)*${c.novaCpm})`,
     r.isChild ? null : `=IF(D${x}="","",D${x}*${c.clientCpc})`,
     r.isHead ? `=IF(${noBudget},"",O${x}-${sumIf('L')}-${sumIf('M')}-${sumIf('N')})` : null,
     r.isHead ? `=IF(P${x}="","",P${x}/O${x})` : null,
-    r.superseded ? `▶ Running with ${r.nextLabel}` : wrap(healthFormula(x, c)),
+    wrap(healthFormula(x, c)),
     wrap(`=MAX(0,ROUNDUP(C${x}-TODAY(),0))`),
     r.comment || null,
-    `=IFERROR(IF(I${x}>0,L${x}/I${x}*K${x},L${x}),L${x})`,
+    r.isLatest ? `=IFERROR(IF(I${x}>0,L${x}/I${x}*K${x},L${x}),L${x})` : `=L${x}`,
     r.isHead ? `=IF(${noBudget},"",O${x}-${sumIf('U')}*(1+${c.fsRate})-${sumIf('N')})` : null,
     r.isHead ? `=IF(V${x}="","",V${x}/O${x})` : null,
+    // X: this IO's margin on the clicks it has delivered. Y: all IOs of the campaign together (head row).
+    `=IFERROR((F${x}*${c.clientCpc}-L${x}*${fsUp}-(I${x}/1000)*${c.novaCpm})/(F${x}*${c.clientCpc}),"")`,
+    r.isHead
+      ? `=IFERROR((${sumIf('F')}*${c.clientCpc}-${sumIf('L')}*${fsUp}-(${sumIf('I')}/1000)*${c.novaCpm})/(${sumIf('F')}*${c.clientCpc}),"")`
+      : null,
     null,
     null,
     r.groupKey,

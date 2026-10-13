@@ -62,6 +62,10 @@ describe('calculatePinstripe', () => {
     expect(row?.projectedMargin).toBeCloseTo(0.713175, 9);
     expect(r.impressionCampaigns).toBe(1);
     expect(r.warnings).toEqual([]);
+    // Impression IO margin: revenue at the budget rate, 200,000 × 2,000 ÷ 350,000.
+    const revenue = (200000 * 2000) / 350000;
+    expect(row?.ioMargin).toBeCloseTo((revenue - 138 - 160) / revenue, 12);
+    expect(row?.overallMargin).toBeCloseTo((revenue - 138 - 160) / revenue, 12);
   });
 
   it('impression campaign without a tracker budget: warns and leaves margin blank', () => {
@@ -84,9 +88,18 @@ describe('calculatePinstripe', () => {
       PINSTRIPE_DEFAULTS,
     );
     const [main, second] = r.rows;
-    expect(main).toMatchObject({ superseded: true, required: 0, health: '▶ Running with 2nd', budget: 500 });
-    expect(second).toMatchObject({ isChild: true, targeted: 475, achieved: 100, required: 375, budget: null, start: day(1), end: day(30) });
+    // Both IOs stay live: the main keeps its own Required and Health.
+    expect(main).toMatchObject({ isLatest: false, targeted: 1375, required: 475, budget: 500 });
+    expect(main?.health).not.toContain('Running with');
+    expect(second).toMatchObject({ isChild: true, isLatest: true, targeted: 475, achieved: 100, required: 375, budget: null, start: day(1), end: day(30) });
     expect(r.groups).toHaveLength(1);
+    // Each IO's own margin on clicks delivered (CPC 0.40), and the campaign overall.
+    expect(main?.ioMargin).toBeCloseTo((360 - 46 - 48) / 360, 12);
+    expect(second?.ioMargin).toBeCloseTo((40 - 5.75 - 4) / 40, 12);
+    expect(main?.overallMargin).toBeCloseTo((400 - 51.75 - 52) / 400, 12);
+    // Earlier IO is costed on what it spent; the rest is costed once, on the 2nd.
+    expect(main?.novaFee).toBeCloseTo(48, 12);
+    expect(main?.projectedMediaCost).toBe(40);
   });
 
   it('warns when the tracker has no target', () => {
@@ -134,7 +147,14 @@ describe('Pinstripe Report tab', () => {
   it('Achieved follows the Type column', () => {
     expect(cell(0, 6)).toBe('=IF($B2="Impressions",J2,I2)');
     expect(cell(0, 5)).toBe('=IF(E2="","",ROUND(E2+(E2*10%),0))');
-    expect(String(cell(0, 17))).toContain('SUMIF($AB$2:$AB,$AB2,$N$2:$N)');
+    expect(String(cell(0, 17))).toContain('SUMIF($AD$2:$AD,$AD2,$N$2:$N)');
+  });
+
+  it('IO and overall margin columns, with the impression rate taken from the first IO', () => {
+    expect(spec.headers[25]).toBe('IO Margin %');
+    expect(spec.headers[26]).toBe('Overall Margin %');
+    expect(cell(1, 25)).toBe('=IFERROR((IF($B3="Impressions",J3*$Q$3/$E$3,I3*0.4)-N3*(1+0.15)-(J3/1000)*0.8)/(IF($B3="Impressions",J3*$Q$3/$E$3,I3*0.4)),"")');
+    expect(String(cell(0, 26))).toContain('SUMIF($AD$2:$AD,$AD2,$I$2:$I)*0.4');
   });
 });
 

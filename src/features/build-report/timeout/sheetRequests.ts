@@ -13,11 +13,10 @@ export interface TimeOutSheetIds {
   readonly settings: number;
 }
 
-const LAST_DATA_COL = TIMEOUT_DATA_COLUMNS; // A–Y
-const UPDATED_COL = 26; // AA (0-based)
-const GROUP_COL = TIMEOUT_GROUP_KEY_COLUMN - 1; // AB (0-based)
-const STOPPED_TEXT = 'Running with';
-/** A new spreadsheet has only 26 columns (A–Z); the report writes up to AB, so every tab is widened first. */
+const LAST_DATA_COL = TIMEOUT_DATA_COLUMNS; // A–Z
+const UPDATED_COL = 27; // AB (0-based)
+const GROUP_COL = TIMEOUT_GROUP_KEY_COLUMN - 1; // AC (0-based)
+/** A new spreadsheet has only 26 columns (A–Z); the report writes up to AC, so every tab is widened first. */
 export const GRID_COLUMNS = TIMEOUT_HEADERS.length + 2;
 const HEADER_BG = '#D9E1F2';
 const HEADER_INK = '#1F2A44';
@@ -73,13 +72,13 @@ function numberFormats(sheetId: number, rowCount: number): object[] {
   });
   return [
     fmt(2, 4, 'DATE', 'dd/MM/yyyy'), // C:D
-    fmt(4, 9, 'NUMBER', '#,##0'), // E:I
-    fmt(9, 10, 'PERCENT', '0.00%'), // J
-    fmt(10, 13, 'NUMBER', '#,##0'), // K:M
-    fmt(13, 18, 'NUMBER', '#,##0.00'), // N:R
-    fmt(18, 19, 'PERCENT', '0.00%'), // S
-    fmt(22, 24, 'NUMBER', '#,##0.00'), // W:X
-    fmt(24, 25, 'PERCENT', '0.00%'), // Y
+    fmt(4, 8, 'NUMBER', '#,##0'), // E:H
+    fmt(8, 9, 'PERCENT', '0.00%'), // I
+    fmt(9, 12, 'NUMBER', '#,##0'), // J:L
+    fmt(12, 17, 'NUMBER', '#,##0.00'), // M:Q
+    fmt(17, 18, 'PERCENT', '0.00%'), // R
+    fmt(21, 23, 'NUMBER', '#,##0.00'), // V:W
+    fmt(23, 26, 'PERCENT', '0.00%'), // X:Z
   ];
 }
 
@@ -92,12 +91,13 @@ export function conditionalRules(sheetId: number, c: TimeOutConfig): object[] {
     custom(`=AND($D2<>"",INT($D2)>=TODAY(),INT($D2)<=TODAY()+${c.endHighlightDays})`, colsFrom2(sheetId, 3), bg('#FFF2CC')),
     custom('=AND(ISNUMBER($H2),$H2<10)', colsFrom2(sheetId, 7), bg('#00B050')),
     custom('=AND(ISNUMBER($H2),$H2<30)', colsFrom2(sheetId, 7), bg('#C6EFCE')),
-    custom(`=AND(ISNUMBER($J2),OR($J2<${c.ctrLow},$J2>${c.ctrHigh}))`, colsFrom2(sheetId, 9), bg('#F4CCCC')),
-    custom(`=AND(ISNUMBER($S2),$S2<${c.minMargin})`, colsFrom2(sheetId, 18), bg('#F4CCCC')),
+    custom(`=AND(ISNUMBER($I2),OR($I2<${c.ctrLow},$I2>${c.ctrHigh}))`, colsFrom2(sheetId, 8), bg('#F4CCCC')),
+    custom(`=AND(ISNUMBER($R2),$R2<${c.minMargin})`, colsFrom2(sheetId, 17), bg('#F4CCCC')),
+    custom(`=AND(ISNUMBER($X2),$X2<${c.minMargin})`, colsFrom2(sheetId, 23), bg('#F4CCCC')),
+    custom(`=AND(ISNUMBER($T2),$T2>0,$T2<=${c.daysRed})`, colsFrom2(sheetId, 19), bg('#F4CCCC')),
+    custom(`=AND(ISNUMBER($T2),$T2>0,$T2<=${c.daysOrange})`, colsFrom2(sheetId, 19), bg('#FCE5CD')),
     custom(`=AND(ISNUMBER($Y2),$Y2<${c.minMargin})`, colsFrom2(sheetId, 24), bg('#F4CCCC')),
-    custom(`=AND(ISNUMBER($U2),$U2>0,$U2<=${c.daysRed})`, colsFrom2(sheetId, 20), bg('#F4CCCC')),
-    custom(`=AND(ISNUMBER($U2),$U2>0,$U2<=${c.daysOrange})`, colsFrom2(sheetId, 20), bg('#FCE5CD')),
-    custom(`=ISNUMBER(SEARCH("${STOPPED_TEXT}",$T2))`, colsFrom2(sheetId, 0, LAST_DATA_COL), { textFormat: { foregroundColor: rgb('#999999') } }),
+    custom(`=AND(ISNUMBER($Z2),$Z2<${c.minMargin})`, colsFrom2(sheetId, 25), bg('#F4CCCC')),
   ];
   return rules.map((rule, index) => ({ addConditionalFormatRule: { rule, index } }));
 }
@@ -105,9 +105,10 @@ export function conditionalRules(sheetId: number, c: TimeOutConfig): object[] {
 /** Calculated values for the Urgent / Margin Issue tabs (values, not formulas). */
 export function rowValues(r: TimeOutRow): (number | string | null)[] {
   return [
-    r.name, r.campaignType, r.start, r.end, r.totalClicks, r.targetedClicks, r.achievedClicks, r.requiredClicks, r.requiredPerDay,
+    r.name, r.campaignType, r.start, r.end, r.totalClicks, r.targetedClicks, r.achievedClicks, r.requiredClicks,
     r.ctr, r.impressions, r.impressionsNeeded, r.impressionsTotal, r.mediaCost, r.fsFee, r.novaFee, r.budget, r.netProfit,
     r.margin, r.health || null, r.daysLeft, r.comment || null, r.projectedMediaCost, r.projectedNetProfit, r.projectedMargin,
+    r.ioMargin, r.overallMargin,
   ];
 }
 
@@ -136,7 +137,8 @@ export function settingsRows(c: TimeOutConfig, trackerTab: string): string[][] {
     ['Minimum margin', pct(c.minMargin)],
     ['Urgent window', `${c.urgentDays} days`],
     ['Healthy CTR', `${pct(c.ctrLow)}–${pct(c.ctrHigh)}`],
-    ['Required Clicks / Day', 'Required Clicks ÷ days left (from the start date if not started), rounded up'],
+    ['IO Margin %', 'Each IO on the clicks it has delivered: (clicks × CPC − media − FS fee − Nova fee) ÷ (clicks × CPC)'],
+    ['Overall Margin %', 'The same for all IOs of a campaign together (first row of the campaign)'],
     ['Campaign Tracker tab', trackerTab],
   ];
 }

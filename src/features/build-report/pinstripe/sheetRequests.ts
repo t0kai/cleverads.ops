@@ -13,11 +13,10 @@ export interface PinstripeSheetIds {
   readonly settings: number;
 }
 
-const LAST_DATA_COL = PINSTRIPE_DATA_COLUMNS; // A–Y
-const UPDATED_COL = 26; // AA (0-based)
-const GROUP_COL = PINSTRIPE_GROUP_KEY_COLUMN - 1; // AB (0-based)
-const STOPPED_TEXT = 'Running with';
-/** A new spreadsheet has only 26 columns (A–Z); Pinstripe writes up to AB, so every tab is widened first. */
+const LAST_DATA_COL = PINSTRIPE_DATA_COLUMNS; // A–AA
+const UPDATED_COL = 28; // AC (0-based)
+const GROUP_COL = PINSTRIPE_GROUP_KEY_COLUMN - 1; // AD (0-based)
+/** A new spreadsheet has only 26 columns (A–Z); Pinstripe writes up to AD, so every tab is widened first. */
 export const GRID_COLUMNS = PINSTRIPE_HEADERS.length + 2;
 const HEADER_BG = '#D9E1F2';
 const HEADER_INK = '#1F2A44';
@@ -98,7 +97,7 @@ function numberFormats(sheetId: number, rowCount: number): object[] {
     fmt(13, 18, 'NUMBER', '#,##0.00'), // N:R
     fmt(18, 19, 'PERCENT', '0.00%'), // S
     fmt(22, 24, 'NUMBER', '#,##0.00'), // W:X
-    fmt(24, 25, 'PERCENT', '0.00%'), // Y
+    fmt(24, 27, 'PERCENT', '0.00%'), // Y:AA
   ];
 }
 
@@ -117,7 +116,8 @@ export function conditionalRules(sheetId: number, c: PinstripeConfig): object[] 
     custom(`=AND(ISNUMBER($U2),$U2>0,$U2<=${c.daysRed})`, colsFrom2(sheetId, 20), bg('#F4CCCC')),
     custom(`=AND(ISNUMBER($U2),$U2>0,$U2<=${c.daysOrange})`, colsFrom2(sheetId, 20), bg('#FCE5CD')),
     custom(`=$B2="Impressions"`, colsFrom2(sheetId, 1), bg('#EDE7F6')),
-    custom(`=ISNUMBER(SEARCH("${STOPPED_TEXT}",$T2))`, colsFrom2(sheetId, 0, LAST_DATA_COL), { textFormat: { foregroundColor: rgb('#999999') } }),
+    custom(`=AND(ISNUMBER($Z2),$Z2<${c.minMargin})`, colsFrom2(sheetId, 25), bg('#F4CCCC')),
+    custom(`=AND(ISNUMBER($AA2),$AA2<${c.minMargin})`, colsFrom2(sheetId, 26), bg('#F4CCCC')),
   ];
   return rules.map((rule, index) => ({ addConditionalFormatRule: { rule, index } }));
 }
@@ -128,6 +128,7 @@ export function rowValues(r: PinstripeRow): (number | string | null)[] {
     r.name, r.type, r.start, r.end, r.totalTarget, r.targeted, r.achieved, r.required, r.clicks, r.impressions, r.ctr,
     r.impressionsNeeded, r.impressionsTotal, r.mediaCost, r.fsFee, r.novaFee, r.budget, r.netProfit, r.margin,
     r.health || null, r.daysLeft, r.comment || null, r.projectedMediaCost, r.projectedNetProfit, r.projectedMargin,
+    r.ioMargin, r.overallMargin,
   ];
 }
 

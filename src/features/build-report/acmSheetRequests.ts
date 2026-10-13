@@ -13,11 +13,12 @@ export interface ReportSheetIds {
   readonly formula: number;
 }
 
-const LAST_DATA_COL = 23; // A–W
-const GROUP_COL = 25; // Z (0-based)
-const UPDATED_COL = 24; // Y (0-based)
-const PROJECTED_HEADERS = ['Projected Media Cost', 'Projected Net Profit', 'Projected Margin %'];
-const STOPPED_TEXT = 'Running with';
+const LAST_DATA_COL = 25; // A–Y
+const GROUP_COL = 27; // AB (0-based)
+const UPDATED_COL = 26; // AA (0-based)
+const EXTRA_HEADERS = ['Projected Media Cost', 'Projected Net Profit', 'Projected Margin %', 'IO Margin %', 'Overall Margin %'];
+/** A new spreadsheet has 26 columns (A–Z); the Report writes up to AB, so it is widened first. */
+const GRID_COLUMNS = 30;
 
 type CellData = { userEnteredValue?: { numberValue?: number; stringValue?: string; formulaValue?: string } };
 
@@ -63,7 +64,7 @@ function numberFormats(sheetId: number, rowCount: number): object[] {
     fmt(7, 8, 'PERCENT', '0.00%'), // H
     fmt(16, 17, 'PERCENT', '0.00%'), // Q
     fmt(20, 22, 'NUMBER', '#,##0.00'), // U:V
-    fmt(22, 23, 'PERCENT', '0.00%'), // W
+    fmt(22, 25, 'PERCENT', '0.00%'), // W:Y
   ];
 }
 
@@ -81,7 +82,8 @@ export function conditionalRules(sheetId: number, c: AcmConfig): object[] {
     custom(`=AND(ISNUMBER($W2),$W2<${c.minMargin})`, colsFrom2(sheetId, 22), bg('#F4CCCC')),
     custom(`=AND(ISNUMBER($S2),$S2>0,$S2<=${c.daysRed})`, colsFrom2(sheetId, 18), bg('#F4CCCC')),
     custom(`=AND(ISNUMBER($S2),$S2>0,$S2<=${c.daysOrange})`, colsFrom2(sheetId, 18), bg('#FCE5CD')),
-    custom(`=ISNUMBER(SEARCH("${STOPPED_TEXT}",$R2))`, colsFrom2(sheetId, 0, LAST_DATA_COL), { textFormat: { foregroundColor: rgb('#999999') } }),
+    custom(`=AND(ISNUMBER($X2),$X2<${c.minMargin})`, colsFrom2(sheetId, 23), bg('#F4CCCC')),
+    custom(`=AND(ISNUMBER($Y2),$Y2<${c.minMargin})`, colsFrom2(sheetId, 24), bg('#F4CCCC')),
   ];
   return rules.map((rule, index) => ({ addConditionalFormatRule: { rule, index } }));
 }
@@ -92,6 +94,7 @@ export function rowValues(r: AcmRow): (number | string | null)[] {
     r.name, r.start, r.end, r.totalClicks, r.targetedClicks, r.achievedClicks, r.requiredClicks, r.ctr, r.impressions,
     r.impressionsNeeded, r.impressionsTotal, r.mediaCost, r.fsFee, r.novaFee, r.budget, r.netProfit, r.margin,
     r.health || null, r.daysLeft, r.comment || null, r.projectedMediaCost, r.projectedNetProfit, r.projectedMargin,
+    r.ioMargin, r.overallMargin,
   ];
 }
 
@@ -126,18 +129,18 @@ export function buildReportRequests({ ids, spec, result, config, lastUpdated }: 
   const n = spec.rows.length;
   const frozen = { frozenRowCount: 1, frozenColumnCount: 1 };
   return [
-    // Tabs: Report, Urgent, Margin Issue, Formula
+    // Tabs: Report, Urgent, Margin Issue, Formula. The Report is widened first: Google rejects cells outside the grid.
     {
       updateSheetProperties: {
-        properties: { sheetId: ids.report, title: 'Report', index: 0, gridProperties: frozen },
-        fields: 'title,index,gridProperties.frozenRowCount,gridProperties.frozenColumnCount',
+        properties: { sheetId: ids.report, title: 'Report', index: 0, gridProperties: { ...frozen, columnCount: GRID_COLUMNS, rowCount: Math.max(1000, n + 1) } },
+        fields: 'title,index,gridProperties.frozenRowCount,gridProperties.frozenColumnCount,gridProperties.columnCount,gridProperties.rowCount',
       },
     },
     { addSheet: { properties: { sheetId: ids.urgent, title: 'Urgent', index: 1, gridProperties: frozen } } },
     { addSheet: { properties: { sheetId: ids.margin, title: 'Margin Issue', index: 2, gridProperties: frozen } } },
     { updateSheetProperties: { properties: { sheetId: ids.formula, title: 'Formula', index: 3 }, fields: 'title,index' } },
 
-    // Report header: A–T from the template, U–W in the template's header style, Y/Z labels.
+    // Report header: A–T from the template, U–Y in the template's header style, AA/AB labels.
     {
       copyPaste: {
         source: { sheetId: ids.formula, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 20 },
@@ -149,12 +152,12 @@ export function buildReportRequests({ ids, spec, result, config, lastUpdated }: 
     {
       copyPaste: {
         source: { sheetId: ids.formula, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 19, endColumnIndex: 20 },
-        destination: { sheetId: ids.report, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 20, endColumnIndex: 23 },
+        destination: { sheetId: ids.report, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 20, endColumnIndex: 25 },
         pasteType: 'PASTE_FORMAT',
         pasteOrientation: 'NORMAL',
       },
     },
-    cells(ids.report, 0, 20, [PROJECTED_HEADERS]),
+    cells(ids.report, 0, 20, [EXTRA_HEADERS]),
     cells(ids.report, 0, UPDATED_COL, [['Last Updated:', 'Group Key']]),
 
     // Report rows: inputs as values, everything calculated as live formulas.

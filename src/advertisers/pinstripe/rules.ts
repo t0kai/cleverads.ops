@@ -34,8 +34,8 @@ export interface PinstripeRow {
   readonly groupKey: string; // AB (hidden)
   readonly isChild: boolean; // a 2nd/3rd IO
   readonly isHead: boolean; // first row of its group (holds Budget/Profit/Margin)
-  readonly superseded: boolean; // a later IO is running
-  readonly nextLabel: string; // "2nd" when a later IO is running
+  /** Last IO of its group. Every IO keeps its own figures; what is still to come is costed once, here. */
+  readonly isLatest: boolean;
   readonly start: number | null; // C
   readonly end: number | null; // D
   readonly totalTarget: number | null; // E
@@ -59,6 +59,10 @@ export interface PinstripeRow {
   readonly projectedMediaCost: number | null; // W
   readonly projectedNetProfit: number | null; // X
   readonly projectedMargin: number | null; // Y
+  /** Z: this IO's own margin on what it has delivered (clicks × CPC, or impressions at the campaign's budget rate). */
+  readonly ioMargin: number | null;
+  /** AA (head row): the same for all IOs of the campaign together. */
+  readonly overallMargin: number | null;
 }
 
 export interface PinstripeGroupResult {
@@ -117,7 +121,16 @@ export function daysLeft(end: number | null, today: number): number | null {
   return Math.max(0, sheetRoundUp(end - today, 0));
 }
 
-type Draft = Omit<PinstripeRow, 'netProfit' | 'margin' | 'projectedNetProfit' | 'projectedMargin'>;
+type Draft = Omit<PinstripeRow, 'netProfit' | 'margin' | 'projectedNetProfit' | 'projectedMargin' | 'ioMargin' | 'overallMargin'>;
+
+/**
+ * Margin on what has been delivered so far: (revenue − media − FS fee − Nova fee on impressions spent) ÷ revenue.
+ * Revenue is clicks × CPC, or for an impression campaign impressions × (budget ÷ impression target). Blank without revenue.
+ */
+export function deliveredMargin(revenue: number | null, mediaCost: number, impressions: number, config: Pick<PinstripeConfig, 'fsRate' | 'novaCpm'>): number | null {
+  if (revenue == null || revenue <= 0) return null;
+  return (revenue - mediaCost * (1 + config.fsRate) - (impressions / 1000) * config.novaCpm) / revenue;
+}
 
 export function calculatePinstripe(input: PinstripeInput, config: PinstripeConfig): PinstripeResult {
   const { today } = input;
@@ -143,8 +156,7 @@ export function calculatePinstripe(input: PinstripeInput, config: PinstripeConfi
       const start = parent.start;
       const end = isChild ? (own.end ?? parent.end) : parent.end;
       const D = isChild ? null : parent.target;
-      const next = g.members[i + 1];
-      const superseded = next !== undefined;
+      const isLatest = i === g.members.length - 1;
       const prev = partial[i - 1];
 
       const clicks = m.item.clicks;
@@ -157,21 +169,22 @@ export function calculatePinstripe(input: PinstripeInput, config: PinstripeConfi
       else if (prev) F = prev.targeted == null ? null : Math.max(prev.targeted - prev.achieved, 0);
       else F = null;
 
-      let H: number | null = F == null ? null : Math.max(F - G, 0);
-      if (superseded) H = 0;
+      // Every IO keeps running and keeps its own figures (main, 2nd and 3rd can all be live).
+      const H: number | null = F == null ? null : Math.max(F - G, 0);
       const K = impressions === 0 ? null : clicks / impressions;
       let L: number | null;
       if (type === 'Impressions') L = H;
       else L = H == null || K == null || K === 0 ? null : sheetRound(H / K, 0);
       const M = L == null ? null : impressions + L;
       const O = N * config.fsRate;
-      const P = M == null ? null : (M / 1000) * config.novaCpm;
+      // Money: what is still to come is costed once, on the latest IO; earlier IOs count what they have spent.
+      const P = isLatest ? (M == null ? null : (M / 1000) * config.novaCpm) : (impressions / 1000) * config.novaCpm;
       let Q: number | null = null;
       if (!isChild) {
         if (type === 'Clicks') Q = D == null ? null : D * config.clientCpc;
         else Q = parent.budget == null || parent.budget === 0 ? null : parent.budget;
       }
-      const W = impressions > 0 && M != null ? (N / impressions) * M : N;
+      const W = isLatest ? (impressions > 0 && M != null ? (N / impressions) * M : N) : N;
 
       partial.push({
         name: m.item.name,
@@ -179,8 +192,7 @@ export function calculatePinstripe(input: PinstripeInput, config: PinstripeConfi
         groupKey: g.key,
         isChild,
         isHead: i === 0,
-        superseded,
-        nextLabel: next?.label ?? '',
+        isLatest,
         start,
         end,
         totalTarget: D,
@@ -196,7 +208,7 @@ export function calculatePinstripe(input: PinstripeInput, config: PinstripeConfi
         fsFee: O,
         novaFee: P,
         budget: Q,
-        health: superseded ? `▶ Running with ${next?.label ?? ''}` : campaignHealth(start, end, F, G, today, config),
+        health: campaignHealth(start, end, F, G, today, config),
         daysLeft: daysLeft(end, today),
         comment: isChild && !g.hasMain && i === 0 ? 'Main campaign not in CSV – target not calculated' : '',
         projectedMediaCost: W,
@@ -209,6 +221,17 @@ export function calculatePinstripe(input: PinstripeInput, config: PinstripeConfi
     const sumP = sumBlanks(partial.map((r) => r.novaFee));
     const sumW = sumBlanks(partial.map((r) => r.projectedMediaCost));
 
+    // Revenue per IO: clicks × CPC, or impressions at the campaign's budget rate (budget ÷ impression target).
+    const impressionRate = type === 'Impressions' && g.hasMain && parent.budget && parent.target ? parent.budget / parent.target : null;
+    const revenueOf = (clicks: number, impressions: number) =>
+      type === 'Clicks' ? clicks * config.clientCpc : impressionRate == null ? null : impressions * impressionRate;
+    const overall = deliveredMargin(
+      revenueOf(sumBlanks(partial.map((r) => r.clicks)), sumBlanks(partial.map((r) => r.impressions))),
+      sumN,
+      sumBlanks(partial.map((r) => r.impressions)),
+      config,
+    );
+
     const rows: PinstripeRow[] = partial.map((r) => {
       const Q = r.budget;
       const hasBudget = r.isHead && Q != null && Q !== 0;
@@ -220,6 +243,8 @@ export function calculatePinstripe(input: PinstripeInput, config: PinstripeConfi
         margin: R == null || Q == null ? null : R / Q,
         projectedNetProfit: X,
         projectedMargin: X == null || Q == null ? null : X / Q,
+        ioMargin: deliveredMargin(revenueOf(r.clicks, r.impressions), r.mediaCost, r.impressions, config),
+        overallMargin: r.isHead ? overall : null,
       };
     });
     const head = rows[0];

@@ -48,6 +48,13 @@ const result = run(golden.today);
 
 const DISPLAY_2DP = new Set(['ctr', 'margin', 'projectedMargin', 'projectedMediaCost', 'projectedNetProfit']);
 
+/**
+ * Oct 2026 change: an IO followed by a 2nd/3rd is no longer stopped (Required 0, "▶ Running with 2nd").
+ * Every IO stays live, so on those rows these fields now hold the IO's own figures. Every money figure
+ * (fees, budget, profit, margin, projections) must still match the report exactly.
+ */
+const LIVE_ON_EARLIER_IOS = new Set(['requiredClicks', 'impressionsNeeded', 'impressionsTotal']);
+
 function close(actual: number | null, expected: number | null, key: string): boolean {
   if (expected == null) return actual == null;
   if (actual == null) return false;
@@ -73,12 +80,20 @@ describe('ACM golden test · 2 Oct 2026', () => {
     it(`row ${i + 2}: ${String(exp['name'])}`, () => {
       const row = result.rows[i];
       expect(row).toBeDefined();
+      const earlier = row?.isLatest === false;
       for (const key of numeric) {
+        if (earlier && LIVE_ON_EARLIER_IOS.has(key)) continue;
         const actual = row?.[key] as number | null;
         const expected = exp[key] as number | null;
         expect(close(actual, expected, key), `${key}: got ${actual}, sheet shows ${expected}`).toBe(true);
       }
-      if (exp['health']) expect(row?.health).toBe(exp['health']);
+      if (earlier) {
+        // Now calculated like any other IO.
+        expect(row?.requiredClicks).toBe(row?.targetedClicks == null ? null : Math.max(row.targetedClicks - row.achievedClicks, 0));
+        expect(row?.health).not.toContain('Running with');
+      } else if (exp['health']) {
+        expect(row?.health).toBe(exp['health']);
+      }
     });
   });
 
@@ -106,18 +121,22 @@ describe('ACM golden test · 2 Oct 2026', () => {
   it('builds a sheet spec with one formula row per IO and the group key hidden', () => {
     const spec = acmModule.buildSheetSpec(result, config);
     expect(spec.rows).toHaveLength(49);
-    expect(spec.hiddenColumns).toEqual([26]);
+    expect(spec.hiddenColumns).toEqual([28]);
     expect(spec.rows[4]?.[4]?.value).toBe('=MAX(E5-F5,0)');
-    expect(spec.rows[3]?.[6]?.value).toBe(0);
+    expect(spec.rows[3]?.[6]?.value).toBe('=IF(OR(E5="",F5=""),"",MAX(E5-F5,0))'); // main IO (sheet row 5) keeps calculating
   });
 });
 
 describe('ACM golden test · 3 Oct 2026 (TODAY moves on)', () => {
   const r3 = run(golden.recalculated3Oct.today);
 
-  it('matches all 49 rows of Campaign Health and Remaining Days as the report showed them', () => {
-    expect(r3.rows.map((r) => [r.health, r.daysLeft])).toEqual(
-      golden.recalculated3Oct.rows.map((r) => [r.health, r.daysLeft]),
+  it('matches Campaign Health and Remaining Days as the report showed them (earlier IOs now show their own health)', () => {
+    const latest = r3.rows.map((r, i) => [r.isLatest, i] as const).filter(([l]) => l).map(([, i]) => i);
+    expect(latest.map((i) => [r3.rows[i]?.health, r3.rows[i]?.daysLeft])).toEqual(
+      latest.map((i) => [golden.recalculated3Oct.rows[i]?.health, golden.recalculated3Oct.rows[i]?.daysLeft]),
     );
+    expect(r3.rows.map((r) => r.daysLeft)).toEqual(golden.recalculated3Oct.rows.map((r) => r.daysLeft));
+    expect(r3.rows.filter((r) => !r.isLatest)).toHaveLength(11);
+    expect(r3.rows.every((r) => !r.health.includes('Running with'))).toBe(true);
   });
 });

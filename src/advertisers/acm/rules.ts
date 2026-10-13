@@ -14,8 +14,8 @@ export interface AcmRow {
   readonly groupKey: string; // Z (hidden)
   readonly isChild: boolean; // a 2nd/3rd IO
   readonly isHead: boolean; // first row of its group (holds Budget/Profit/Margin)
-  readonly superseded: boolean; // a later IO is running (this row: Required 0, Health "▶ Running with 2nd")
-  readonly nextLabel: string; // "2nd" when a later IO is running
+  /** Last IO of its group. Every IO keeps its own figures; the clicks still to come are costed once, here. */
+  readonly isLatest: boolean;
   readonly start: number | null; // B (serial)
   readonly end: number | null; // C (serial)
   readonly totalClicks: number | null; // D
@@ -38,6 +38,10 @@ export interface AcmRow {
   readonly projectedMediaCost: number | null; // U
   readonly projectedNetProfit: number | null; // V
   readonly projectedMargin: number | null; // W
+  /** X: this IO's own margin on the clicks it has delivered (clicks × CPC against its media, FS and Nova). */
+  readonly ioMargin: number | null;
+  /** Y (head row): the same for all IOs of the campaign together. */
+  readonly overallMargin: number | null;
 }
 
 export interface AcmGroupResult {
@@ -82,6 +86,16 @@ export function campaignHealth(
   return `🔴 Critical | ${perDay}/day`;
 }
 
+/**
+ * Margin on clicks already delivered: (clicks × CPC − media − FS fee − Nova fee on impressions spent) ÷ (clicks × CPC).
+ * Blank when there are no clicks yet.
+ */
+export function ioMargin(clicks: number, mediaCost: number, impressions: number, config: Pick<AcmConfig, 'clientCpc' | 'fsRate' | 'novaCpm'>): number | null {
+  const revenue = clicks * config.clientCpc;
+  if (revenue <= 0) return null;
+  return (revenue - mediaCost * (1 + config.fsRate) - (impressions / 1000) * config.novaCpm) / revenue;
+}
+
 /** Remaining days: MAX(0, ROUNDUP(end − TODAY())). */
 export function daysLeft(end: number | null, today: number): number | null {
   if (end == null) return null;
@@ -92,8 +106,7 @@ interface Draft {
   row: Dv360Row;
   isChild: boolean;
   indexInGroup: number;
-  superseded: boolean;
-  nextLabel: string;
+  isLatest: boolean;
   start: number | null;
   end: number | null;
   total: number | null;
@@ -130,13 +143,11 @@ export function calculateAcm(input: ModuleInput, config: AcmConfig): AcmResult {
         end = own.end ?? parent.end;
         total = null;
       }
-      const next = g.members[i + 1];
       return {
         row: m.item,
         isChild,
         indexInGroup: i,
-        superseded: next !== undefined,
-        nextLabel: next?.label ?? '',
+        isLatest: i === g.members.length - 1,
         start,
         end,
         total,
@@ -145,7 +156,7 @@ export function calculateAcm(input: ModuleInput, config: AcmConfig): AcmResult {
     });
 
     // Per-row formulas, top to bottom (a 2nd's target needs the row above).
-    const partial: Omit<AcmRow, 'netProfit' | 'margin' | 'projectedNetProfit' | 'projectedMargin'>[] = [];
+    const partial: Omit<AcmRow, 'netProfit' | 'margin' | 'projectedNetProfit' | 'projectedMargin' | 'ioMargin' | 'overallMargin'>[] = [];
     drafts.forEach((d, i) => {
       const prev = partial[i - 1];
       const F = d.row.clicks;
@@ -162,27 +173,25 @@ export function calculateAcm(input: ModuleInput, config: AcmConfig): AcmResult {
         E = null;
       }
 
-      let G: number | null = E == null ? null : Math.max(E - F, 0);
-      if (d.superseded) G = 0;
+      // Every IO keeps running and keeps its own figures (main, 2nd and 3rd can all be live).
+      const G: number | null = E == null ? null : Math.max(E - F, 0);
       const H = I === 0 ? null : F / I;
       const J = G == null || H == null || H === 0 ? null : sheetRound(G / H, 0);
       const K = J == null ? null : I + J;
       const M = L * config.fsRate;
-      const N = K == null ? null : (K / 1000) * config.novaCpm;
+      // Money: the clicks still to come are costed once, on the latest IO; earlier IOs count what they have spent.
+      const N = d.isLatest ? (K == null ? null : (K / 1000) * config.novaCpm) : (I / 1000) * config.novaCpm;
       const O = d.isChild || D == null ? null : D * config.clientCpc;
-      const U = I > 0 && K != null ? (L / I) * K : L;
+      const U = d.isLatest ? (I > 0 && K != null ? (L / I) * K : L) : L;
 
-      const health = d.superseded
-        ? `▶ Running with ${d.nextLabel}`
-        : campaignHealth(d.start, d.end, E, F, today, config);
+      const health = campaignHealth(d.start, d.end, E, F, today, config);
 
       partial.push({
         name: d.row.name,
         groupKey: g.key,
         isChild: d.isChild,
         isHead: d.indexInGroup === 0,
-        superseded: d.superseded,
-        nextLabel: d.nextLabel,
+        isLatest: d.isLatest,
         start: d.start,
         end: d.end,
         totalClicks: D,
@@ -210,6 +219,12 @@ export function calculateAcm(input: ModuleInput, config: AcmConfig): AcmResult {
     const sumN = sumBlanks(partial.map((r) => r.novaFee));
     const sumU = sumBlanks(partial.map((r) => r.projectedMediaCost));
 
+    const overall = ioMargin(
+      sumBlanks(partial.map((r) => r.achievedClicks)),
+      sumBlanks(partial.map((r) => r.mediaCost)),
+      sumBlanks(partial.map((r) => r.impressions)),
+      config,
+    );
     const rows: AcmRow[] = partial.map((r) => {
       const O = r.budget;
       const hasBudget = r.isHead && O != null && O !== 0;
@@ -221,6 +236,8 @@ export function calculateAcm(input: ModuleInput, config: AcmConfig): AcmResult {
         margin: P == null || O == null ? null : P / O,
         projectedNetProfit: V,
         projectedMargin: V == null || O == null ? null : V / O,
+        ioMargin: ioMargin(r.achievedClicks, r.mediaCost, r.impressions, config),
+        overallMargin: r.isHead ? overall : null,
       };
     });
     const head = rows[0];

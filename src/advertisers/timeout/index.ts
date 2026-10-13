@@ -5,7 +5,7 @@ import { buildTimeOutSheetSpec } from './sheet';
 
 /**
  * Time Out rules v1: every campaign billed per click (A$0.30) for now, healthy CTR 1.5–3%,
- * "2nd IO 3rd" naming, Required Clicks / Day, projected margin.
+ * "2nd IO 3rd" naming, every IO live with its own margin plus an overall margin, projected margin.
  * Self-contained: imports only engine/, shared/ and the common module contract, never another advertiser.
  */
 export const timeOutModule: AdvertiserModule<TimeOutConfig, TimeOutResult> = {
@@ -16,7 +16,7 @@ export const timeOutModule: AdvertiserModule<TimeOutConfig, TimeOutResult> = {
   buildSheetSpec: (result, config) => buildTimeOutSheetSpec(result, config),
 };
 
-export { calculateTimeOut, requiredPerDay } from './rules';
+export { calculateTimeOut, ioMargin } from './rules';
 export { TIMEOUT_CAMPAIGN_TYPE, TIMEOUT_DEFAULTS, parseTimeOutConfig } from './config';
 export { groupTimeOutCampaigns, splitTimeOutName } from './names';
 export { TIMEOUT_DATA_COLUMNS, TIMEOUT_GROUP_KEY_COLUMN, TIMEOUT_HEADERS } from './sheet';
