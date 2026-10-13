@@ -131,6 +131,12 @@ export function calculateTimeOut(input: TimeOutInput, config: TimeOutConfig): Ti
       warnings.push(`No Clicks/View Target in the Campaign Tracker for "${g.members[0]?.item.name ?? g.key}".`);
     }
 
+    // One target per campaign: Targeted sits on the main IO only. Every IO's clicks count towards it,
+    // and what is still needed is shown once, on the last IO (Oct 2026).
+    const groupTargeted = g.hasMain && parent.clicks != null ? sheetRound(parent.clicks + parent.clicks * config.clickBuffer, 0) : null;
+    const groupAchieved = sumBlanks(g.members.map((m) => m.item.clicks));
+    const groupRequired = groupTargeted == null ? null : Math.max(groupTargeted - groupAchieved, 0);
+
     const drafts: Draft[] = [];
     g.members.forEach((m, i) => {
       const isChild = m.order > 1;
@@ -140,19 +146,13 @@ export function calculateTimeOut(input: TimeOutInput, config: TimeOutConfig): Ti
       const end = isChild ? (own.end ?? parent.end) : parent.end;
       const D = isChild ? null : parent.clicks;
       const isLatest = i === g.members.length - 1;
-      const prev = drafts[i - 1];
 
       const F = m.item.clicks;
       const I = m.item.impressions;
       const L = m.item.cost;
 
-      let E: number | null;
-      if (!isChild) E = D == null ? null : sheetRound(D + D * config.clickBuffer, 0);
-      else if (prev) E = prev.targetedClicks == null ? null : Math.max(prev.targetedClicks - prev.achievedClicks, 0);
-      else E = null;
-
-      // Every IO keeps running and keeps its own figures (main, 2nd and 3rd can all be live).
-      const G: number | null = E == null ? null : Math.max(E - F, 0);
+      const E = isChild ? null : groupTargeted;
+      const G = isLatest ? groupRequired : null;
       const H = I === 0 ? null : F / I;
       const J = G == null || H == null || H === 0 ? null : sheetRound(G / H, 0);
       const K = J == null ? null : I + J;
@@ -180,7 +180,8 @@ export function calculateTimeOut(input: TimeOutInput, config: TimeOutConfig): Ti
         fsFee: L * config.fsRate,
         novaFee: N,
         budget: isChild || D == null ? null : D * config.clientCpc,
-        health: campaignHealth(start, end, E, F, today, config),
+        // Health on every IO: the whole campaign's pace (all IOs' clicks against the target).
+        health: campaignHealth(start, end, groupTargeted, groupAchieved, today, config),
         daysLeft: daysLeft(end, today),
         comment: isChild && !g.hasMain && i === 0 ? 'Main campaign not in CSV – target not calculated' : '',
         projectedMediaCost: isLatest ? (I > 0 && K != null ? (L / I) * K : L) : L,

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { serialFromYmd } from '@/engine/dates/serial';
 import { ValidationError } from '@/shared/errors';
 import { PINSTRIPE_DEFAULTS, parsePinstripeConfig } from './config';
-import { calculatePinstripe, campaignType, type PinstripeTarget } from './rules';
+import { calculatePinstripe, campaignHealth, campaignType, type PinstripeTarget } from './rules';
 import { PINSTRIPE_HEADERS, PINSTRIPE_GROUP_KEY_COLUMN, buildPinstripeSheetSpec } from './sheet';
 import { pinstripeModule } from './index';
 
@@ -88,10 +88,11 @@ describe('calculatePinstripe', () => {
       PINSTRIPE_DEFAULTS,
     );
     const [main, second] = r.rows;
-    // Both IOs stay live: the main keeps its own Required and Health.
-    expect(main).toMatchObject({ isLatest: false, targeted: 1375, required: 475, budget: 500 });
-    expect(main?.health).not.toContain('Running with');
-    expect(second).toMatchObject({ isChild: true, isLatest: true, targeted: 475, achieved: 100, required: 375, budget: null, start: day(1), end: day(30) });
+    // One target, on the main IO; what is still needed (1,375 − 900 − 100) on the last IO; campaign health on both.
+    expect(main).toMatchObject({ isLatest: false, targeted: 1375, required: null, impressionsNeeded: null, budget: 500 });
+    expect(second).toMatchObject({ isChild: true, isLatest: true, targeted: null, achieved: 100, required: 375, budget: null, start: day(1), end: day(30) });
+    expect(main?.health).toBe(campaignHealth(day(1), day(30), 1375, 1000, day(11), PINSTRIPE_DEFAULTS));
+    expect(second?.health).toBe(main?.health);
     expect(r.groups).toHaveLength(1);
     // Each IO's own margin on clicks delivered (CPC 0.40), and the campaign overall.
     expect(main?.ioMargin).toBeCloseTo((360 - 46 - 48) / 360, 12);

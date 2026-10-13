@@ -63,7 +63,8 @@ describe('calculateAcm edge cases', () => {
     );
     expect(r.rows[1]?.start).toBe(day(1));
     expect(r.rows[1]?.end).toBe(day(30));
-    expect(r.rows[1]?.targetedClicks).toBe(100); // 110 − 10
+    expect(r.rows[1]?.targetedClicks).toBeNull(); // one target per campaign, on the main IO
+    expect(r.rows[1]?.requiredClicks).toBe(90); // 110 − (10 + 10), shown on the last IO
   });
   it('zero impressions never divides by zero', () => {
     const r = calculateAcm(
@@ -92,7 +93,7 @@ describe('parseAcmConfig', () => {
   });
 });
 
-describe('every IO stays live', () => {
+describe('one target per campaign, every IO live', () => {
   // Main and 2nd both running; numbers worked out by hand. CPC 0.60, FS 15%, Nova A$0.80 CPM.
   const r = calculateAcm(
     {
@@ -107,10 +108,15 @@ describe('every IO stays live', () => {
   );
   const [main, second] = r.rows;
 
-  it('calculates Required and Health for the main IO too', () => {
-    expect(main).toMatchObject({ targetedClicks: 550, requiredClicks: 450, isLatest: false });
+  it('shows Targeted on the main IO and what is still needed (target − all clicks) on the last IO', () => {
+    expect(main).toMatchObject({ targetedClicks: 550, requiredClicks: null, impressionsNeeded: null, isLatest: false });
+    expect(second).toMatchObject({ targetedClicks: null, requiredClicks: 410, isLatest: true }); // 550 − (100 + 40)
+  });
+
+  it('shows the campaign health on every IO', () => {
+    expect(main?.health).toBe(campaignHealth(day(1), day(20), 550, 140, day(3), ACM_DEFAULTS));
+    expect(second?.health).toBe(main?.health);
     expect(main?.health).not.toContain('Running with');
-    expect(second).toMatchObject({ targetedClicks: 450, requiredClicks: 410, isLatest: true });
   });
 
   it('gives each IO its own margin and the campaign an overall margin', () => {

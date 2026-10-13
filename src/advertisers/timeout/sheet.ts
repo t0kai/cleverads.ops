@@ -29,19 +29,24 @@ export const TIMEOUT_GROUP_KEY_COLUMN = 29;
 const pct = (rate: number) => `${+(rate * 100).toFixed(6)}%`;
 const iferror = (f: string) => `=IFERROR(${f.replace(/^=/, '')},"")`;
 
-function healthFormula(x: number, c: TimeOutConfig): string {
+/**
+ * Campaign Health for row x. `tgt` is the campaign's Targeted Clicks (main IO) and `ach` all its IOs' clicks,
+ * so every IO of a campaign shows the campaign's pace and the clicks still needed per day.
+ */
+function healthFormula(x: number, tgt: string, ach: string, c: TimeOutConfig): string {
   const pace = `((TODAY()-C${x}+1)/(D${x}-C${x}+1))`;
-  const perDay = `ROUND((F${x}-G${x})/MAX(1,D${x}-TODAY()),0)&"/day"`;
+  const perDay = `ROUND((${tgt}-${ach})/MAX(1,D${x}-TODAY()),0)&"/day"`;
   return (
-    `=IF(OR(F${x}="",C${x}="",D${x}=""),"",IF(G${x}>=F${x},"🟢 Completed",IF(TODAY()<C${x},"Not Started",IF(TODAY()>D${x},"Ended",` +
-    `IF((G${x}/F${x})>=${pace}+${c.paceAhead},"🟢 Ahead | "&${perDay},` +
-    `IF((G${x}/F${x})>=${pace}-${c.paceOnTrack},"🟢 On Pace | "&${perDay},` +
-    `IF((G${x}/F${x})>=${pace}-${c.paceBehind},"🟡 Behind | "&${perDay},` +
+    `=IF(OR(${tgt}="",C${x}="",D${x}=""),"",IF(${ach}>=${tgt},"🟢 Completed",IF(TODAY()<C${x},"Not Started",IF(TODAY()>D${x},"Ended",` +
+    `IF((${ach}/${tgt})>=${pace}+${c.paceAhead},"🟢 Ahead | "&${perDay},` +
+    `IF((${ach}/${tgt})>=${pace}-${c.paceOnTrack},"🟢 On Pace | "&${perDay},` +
+    `IF((${ach}/${tgt})>=${pace}-${c.paceBehind},"🟡 Behind | "&${perDay},` +
     `"🔴 Critical | "&${perDay})))))))`
   );
 }
 
-function rowCells(r: TimeOutRow, x: number, c: TimeOutConfig): SheetCell[] {
+/** `h` is the sheet row of the campaign's first IO (it holds Targeted Clicks). */
+function rowCells(r: TimeOutRow, x: number, h: number, c: TimeOutConfig): SheetCell[] {
   const wrap = (f: string) => (r.isChild ? iferror(f) : f);
   const sumIf = (col: string) => `SUMIF($AC$2:$AC,$AC${x},$${col}$2:$${col})`;
   const noBudget = `OR(P${x}="",P${x}=0)`;
@@ -49,11 +54,10 @@ function rowCells(r: TimeOutRow, x: number, c: TimeOutConfig): SheetCell[] {
   const margin = (clicks: string, media: string, impressions: string) =>
     `=IFERROR((${clicks}*${c.clientCpc}-${media}*${fsUp}-(${impressions}/1000)*${c.novaCpm})/(${clicks}*${c.clientCpc}),"")`;
 
-  const F = !r.isChild
-    ? `=IF(E${x}="","",ROUND(E${x}+(E${x}*${pct(c.clickBuffer)}),0))`
-    : r.isHead
-      ? null
-      : `=MAX(F${x - 1}-G${x - 1},0)`;
+  // One target per campaign, on the main IO. Every IO's clicks count towards it.
+  const F = r.isChild ? null : `=IF(E${x}="","",ROUND(E${x}+(E${x}*${pct(c.clickBuffer)}),0))`;
+  const tgt = `$F$${h}`;
+  const ach = sumIf('G');
 
   const cells: (string | number | null)[] = [
     r.name, // A
@@ -63,11 +67,11 @@ function rowCells(r: TimeOutRow, x: number, c: TimeOutConfig): SheetCell[] {
     r.totalClicks, // E
     F, // F
     r.achievedClicks, // G
-    wrap(`=IF(OR(F${x}="",G${x}=""),"",MAX(F${x}-G${x},0))`), // H
+    r.isLatest ? iferror(`=IF(${tgt}="","",MAX(${tgt}-${ach},0))`) : null, // H: still needed, on the last IO only
     wrap(`=IF(OR(G${x}="",J${x}="",J${x}=0),"",G${x}/J${x})`), // I
     r.impressions, // J
-    wrap(`=IF(OR(H${x}="",I${x}="",I${x}=0),"",ROUND(H${x}/I${x},0))`), // K
-    wrap(`=IF(OR(J${x}="",K${x}=""),"",J${x}+K${x})`), // L
+    r.isLatest ? wrap(`=IF(OR(H${x}="",I${x}="",I${x}=0),"",ROUND(H${x}/I${x},0))`) : null, // K
+    r.isLatest ? wrap(`=IF(OR(J${x}="",K${x}=""),"",J${x}+K${x})`) : null, // L
     r.mediaCost, // M
     wrap(`=IF(M${x}="","",M${x}*${pct(c.fsRate)})`), // N
     // O: the latest IO is costed on the impressions it still needs; earlier IOs on what they have spent.
@@ -75,7 +79,7 @@ function rowCells(r: TimeOutRow, x: number, c: TimeOutConfig): SheetCell[] {
     r.isChild ? null : `=IF(E${x}="","",E${x}*${c.clientCpc})`, // P
     r.isHead ? `=IF(${noBudget},"",P${x}-${sumIf('M')}-${sumIf('N')}-${sumIf('O')})` : null, // Q
     r.isHead ? `=IF(Q${x}="","",Q${x}/P${x})` : null, // R
-    iferror(healthFormula(x, c)), // S
+    iferror(healthFormula(x, tgt, ach, c)), // S
     wrap(`=MAX(0,ROUNDUP(D${x}-TODAY(),0))`), // T
     r.comment || null, // U
     r.isLatest ? `=IFERROR(IF(J${x}>0,M${x}/J${x}*L${x},M${x}),M${x})` : `=M${x}`, // V
@@ -94,7 +98,13 @@ export function buildTimeOutSheetSpec(result: TimeOutResult, config: TimeOutConf
   return {
     title,
     headers: TIMEOUT_HEADERS,
-    rows: result.rows.map((r, i) => rowCells(r, i + 2, config)),
+    rows: (() => {
+      let head = 2;
+      return result.rows.map((r, i) => {
+        if (r.isHead) head = i + 2;
+        return rowCells(r, i + 2, head, config);
+      });
+    })(),
     hiddenColumns: [TIMEOUT_GROUP_KEY_COLUMN],
   };
 }

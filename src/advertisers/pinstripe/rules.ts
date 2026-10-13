@@ -148,6 +148,13 @@ export function calculatePinstripe(input: PinstripeInput, config: PinstripeConfi
       warnings.push(`No budget in the Campaign Tracker for impression campaign "${firstName}". Margin is not calculated.`);
     }
 
+    // One target per campaign: Targeted sits on the main IO only. Every IO's delivery counts towards it,
+    // and what is still needed is shown once, on the last IO (Oct 2026).
+    const achievedOf = (m: { item: Dv360Row }) => (type === 'Impressions' ? m.item.impressions : m.item.clicks);
+    const groupTargeted = g.hasMain && parent.target != null ? sheetRound(parent.target + parent.target * config.targetBuffer, 0) : null;
+    const groupAchieved = sumBlanks(g.members.map(achievedOf));
+    const groupRequired = groupTargeted == null ? null : Math.max(groupTargeted - groupAchieved, 0);
+
     const partial: Draft[] = [];
     g.members.forEach((m, i) => {
       const isChild = m.order > 1;
@@ -157,20 +164,14 @@ export function calculatePinstripe(input: PinstripeInput, config: PinstripeConfi
       const end = isChild ? (own.end ?? parent.end) : parent.end;
       const D = isChild ? null : parent.target;
       const isLatest = i === g.members.length - 1;
-      const prev = partial[i - 1];
 
       const clicks = m.item.clicks;
       const impressions = m.item.impressions;
       const N = m.item.cost;
       const G = type === 'Impressions' ? impressions : clicks;
 
-      let F: number | null;
-      if (!isChild) F = D == null ? null : sheetRound(D + D * config.targetBuffer, 0);
-      else if (prev) F = prev.targeted == null ? null : Math.max(prev.targeted - prev.achieved, 0);
-      else F = null;
-
-      // Every IO keeps running and keeps its own figures (main, 2nd and 3rd can all be live).
-      const H: number | null = F == null ? null : Math.max(F - G, 0);
+      const F = isChild ? null : groupTargeted;
+      const H = isLatest ? groupRequired : null;
       const K = impressions === 0 ? null : clicks / impressions;
       let L: number | null;
       if (type === 'Impressions') L = H;
@@ -208,7 +209,8 @@ export function calculatePinstripe(input: PinstripeInput, config: PinstripeConfi
         fsFee: O,
         novaFee: P,
         budget: Q,
-        health: campaignHealth(start, end, F, G, today, config),
+        // Health on every IO: the whole campaign's pace (all IOs' delivery against the target).
+        health: campaignHealth(start, end, groupTargeted, groupAchieved, today, config),
         daysLeft: daysLeft(end, today),
         comment: isChild && !g.hasMain && i === 0 ? 'Main campaign not in CSV – target not calculated' : '',
         projectedMediaCost: W,

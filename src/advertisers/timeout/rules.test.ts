@@ -49,14 +49,14 @@ describe('calculateTimeOut', () => {
   ];
   const r = calculateTimeOut({ today, rows, targets: new Map([['harbour gin | launch gc', target({ clicks: 3000 })]]) }, TIMEOUT_DEFAULTS);
 
-  it('keeps main, 2nd and 3rd together with one budget = target × A$0.30, every IO live', () => {
+  it('one budget = target × A$0.30; Targeted on the main IO, what is still needed on the last IO', () => {
     expect(r.groups).toHaveLength(1);
     const [main, second, third] = r.rows;
-    expect(main).toMatchObject({ campaignType: 'CPC', totalClicks: 3000, targetedClicks: 3300, requiredClicks: 3164, budget: 900, isLatest: false });
-    expect(second).toMatchObject({ isChild: true, targetedClicks: 3164, requiredClicks: 3040, budget: null, isLatest: false });
-    expect(third).toMatchObject({ isChild: true, targetedClicks: 3040, requiredClicks: 3019, isLatest: true, health: '🔴 Critical | 159/day' });
-    expect(main?.health).toContain('/day');
-    expect(r.rows.some((x) => x.health.includes('Running with'))).toBe(false);
+    expect(main).toMatchObject({ campaignType: 'CPC', totalClicks: 3000, targetedClicks: 3300, requiredClicks: null, budget: 900, isLatest: false });
+    expect(second).toMatchObject({ isChild: true, targetedClicks: null, requiredClicks: null, budget: null, isLatest: false });
+    expect(third).toMatchObject({ isChild: true, targetedClicks: null, requiredClicks: 3300 - 136 - 124 - 21, isLatest: true });
+    // Campaign health on every IO: 281 of 3,300 clicks on day 11 of 30, 3,019 still needed over 19 days.
+    expect(r.rows.map((x) => x.health)).toEqual(['🔴 Critical | 159/day', '🔴 Critical | 159/day', '🔴 Critical | 159/day']);
   });
 
   it('gives each IO its own margin on delivered clicks, and the campaign an overall margin', () => {
@@ -124,6 +124,12 @@ describe('Time Out Report tab', () => {
     expect(String(cell(0, 16))).toContain('SUMIF($AC$2:$AC,$AC2,$M$2:$M)');
     expect(cell(0, 14)).toBe('=IF(J2="","",(J2/1000)*0.8)'); // main is not the latest IO: Nova on spend
     expect(cell(0, 21)).toBe('=M2');
+    expect(cell(0, 5)).toBe('=IF(E2="","",ROUND(E2+(E2*10%),0))'); // Targeted on the main IO
+    expect(cell(1, 5)).toBeNull();
+    expect(cell(0, 7)).toBeNull(); // Required only on the last IO
+    expect(cell(1, 7)).toBe('=IFERROR(IF($F$2="","",MAX($F$2-SUMIF($AC$2:$AC,$AC3,$G$2:$G),0)),"")');
+    expect(String(cell(0, 18))).toContain('SUMIF($AC$2:$AC,$AC2,$G$2:$G)>=$F$2'); // campaign health on every IO
+    expect(cell(2, 7)).toBe('=IFERROR(IF($F$4="","",MAX($F$4-SUMIF($AC$2:$AC,$AC4,$G$2:$G),0)),"")'); // single IO: its own row
   });
 
   it('every formula has balanced brackets and quotes', () => {

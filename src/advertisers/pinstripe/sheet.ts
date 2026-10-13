@@ -28,14 +28,18 @@ export const PINSTRIPE_GROUP_KEY_COLUMN = 30;
 const pct = (rate: number) => `${+(rate * 100).toFixed(6)}%`;
 const iferror = (f: string) => `=IFERROR(${f.replace(/^=/, '')},"")`;
 
-function healthFormula(x: number, c: PinstripeConfig): string {
+/**
+ * Campaign Health for row x. `tgt` is the campaign's Targeted (main IO) and `ach` all its IOs' delivery,
+ * so every IO of a campaign shows the campaign's pace and what is still needed per day.
+ */
+function healthFormula(x: number, tgt: string, ach: string, c: PinstripeConfig): string {
   const pace = `((TODAY()-C${x}+1)/(D${x}-C${x}+1))`;
-  const perDay = `ROUND((F${x}-G${x})/MAX(1,D${x}-TODAY()),0)&"/day"`;
+  const perDay = `ROUND((${tgt}-${ach})/MAX(1,D${x}-TODAY()),0)&"/day"`;
   return (
-    `=IF(OR(F${x}="",C${x}="",D${x}=""),"",IF(G${x}>=F${x},"🟢 Completed",IF(TODAY()<C${x},"Not Started",IF(TODAY()>D${x},"Ended",` +
-    `IF((G${x}/F${x})>=${pace}+${c.paceAhead},"🟢 Ahead | "&${perDay},` +
-    `IF((G${x}/F${x})>=${pace}-${c.paceOnTrack},"🟢 On Pace | "&${perDay},` +
-    `IF((G${x}/F${x})>=${pace}-${c.paceBehind},"🟡 Behind | "&${perDay},` +
+    `=IF(OR(${tgt}="",C${x}="",D${x}=""),"",IF(${ach}>=${tgt},"🟢 Completed",IF(TODAY()<C${x},"Not Started",IF(TODAY()>D${x},"Ended",` +
+    `IF((${ach}/${tgt})>=${pace}+${c.paceAhead},"🟢 Ahead | "&${perDay},` +
+    `IF((${ach}/${tgt})>=${pace}-${c.paceOnTrack},"🟢 On Pace | "&${perDay},` +
+    `IF((${ach}/${tgt})>=${pace}-${c.paceBehind},"🟡 Behind | "&${perDay},` +
     `"🔴 Critical | "&${perDay})))))))`
   );
 }
@@ -55,11 +59,10 @@ function rowCells(r: PinstripeRow, x: number, h: number, c: PinstripeConfig): Sh
   const margin = (rev: string, media: string, impressions: string) => `=IFERROR((${rev}-${media}*${fsUp}-(${impressions}/1000)*${c.novaCpm})/(${rev}),"")`;
   const noBudget = `OR(Q${x}="",Q${x}=0)`;
 
-  const F = !r.isChild
-    ? `=IF(E${x}="","",ROUND(E${x}+(E${x}*${pct(c.targetBuffer)}),0))`
-    : r.isHead
-      ? null
-      : `=MAX(F${x - 1}-G${x - 1},0)`;
+  // One target per campaign, on the main IO. Every IO's delivery (column G) counts towards it.
+  const F = r.isChild ? null : `=IF(E${x}="","",ROUND(E${x}+(E${x}*${pct(c.targetBuffer)}),0))`;
+  const tgt = `$F$${h}`;
+  const ach = sumIf('G');
 
   const cells: (string | number | null)[] = [
     r.name, // A
@@ -69,12 +72,12 @@ function rowCells(r: PinstripeRow, x: number, h: number, c: PinstripeConfig): Sh
     r.totalTarget, // E
     F, // F
     `=IF($B${x}="Impressions",J${x},I${x})`, // G
-    iferror(`=IF(OR(F${x}="",G${x}=""),"",MAX(F${x}-G${x},0))`), // H
+    r.isLatest ? iferror(`=IF(${tgt}="","",MAX(${tgt}-${ach},0))`) : null, // H: still needed, on the last IO only
     r.clicks, // I
     r.impressions, // J
     iferror(`=IF(OR(I${x}="",J${x}="",J${x}=0),"",I${x}/J${x})`), // K
-    iferror(`=IF(H${x}="","",IF($B${x}="Impressions",H${x},IF(OR(K${x}="",K${x}=0),"",ROUND(H${x}/K${x},0))))`), // L
-    iferror(`=IF(OR(J${x}="",L${x}=""),"",J${x}+L${x})`), // M
+    r.isLatest ? iferror(`=IF(H${x}="","",IF($B${x}="Impressions",H${x},IF(OR(K${x}="",K${x}=0),"",ROUND(H${x}/K${x},0))))`) : null, // L
+    r.isLatest ? iferror(`=IF(OR(J${x}="",L${x}=""),"",J${x}+L${x})`) : null, // M
     r.mediaCost, // N
     iferror(`=IF(N${x}="","",N${x}*${pct(c.fsRate)})`), // O
     // P: the latest IO is costed on the impressions it still needs; earlier IOs on what they have spent.
@@ -82,7 +85,7 @@ function rowCells(r: PinstripeRow, x: number, h: number, c: PinstripeConfig): Sh
     budgetCell(r, x, c), // Q
     r.isHead ? `=IF(${noBudget},"",Q${x}-${sumIf('N')}-${sumIf('O')}-${sumIf('P')})` : null, // R
     r.isHead ? `=IF(R${x}="","",R${x}/Q${x})` : null, // S
-    iferror(healthFormula(x, c)), // T
+    iferror(healthFormula(x, tgt, ach, c)), // T
     iferror(`=MAX(0,ROUNDUP(D${x}-TODAY(),0))`), // U
     r.comment || null, // V
     r.isLatest ? `=IFERROR(IF(J${x}>0,N${x}/J${x}*M${x},N${x}),N${x})` : `=N${x}`, // W

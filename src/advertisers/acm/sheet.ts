@@ -21,29 +21,33 @@ export const GROUP_KEY_COLUMN = 28;
 const pct = (rate: number) => `${+(rate * 100).toFixed(6)}%`;
 const iferror = (f: string) => `=IFERROR(${f.replace(/^=/, '')},"")`;
 
-function healthFormula(x: number, c: AcmConfig): string {
+/**
+ * Campaign Health for row x. `tgt` is the campaign's Targeted Clicks (main IO) and `ach` all its IOs' clicks,
+ * so every IO of a campaign shows the campaign's pace and the clicks still needed per day.
+ */
+function healthFormula(x: number, tgt: string, ach: string, c: AcmConfig): string {
   const pace = `((TODAY()-B${x}+1)/(C${x}-B${x}+1))`;
-  const perDay = `ROUND((E${x}-F${x})/MAX(1,C${x}-TODAY()),0)&"/day"`;
+  const perDay = `ROUND((${tgt}-${ach})/MAX(1,C${x}-TODAY()),0)&"/day"`;
   return (
-    `=IF(F${x}>=E${x},"🟢 Completed",IF(TODAY()<B${x},"Not Started",IF(TODAY()>C${x},"Ended",` +
-    `IF((F${x}/E${x})>=${pace}+${c.paceAhead},"🟢 Ahead | "&${perDay},` +
-    `IF((F${x}/E${x})>=${pace}-${c.paceOnTrack},"🟢 On Pace | "&${perDay},` +
-    `IF((F${x}/E${x})>=${pace}-${c.paceBehind},"🟡 Behind | "&${perDay},` +
-    `"🔴 Critical | "&${perDay}))))))`
+    `=IFERROR(IF(OR(${tgt}="",B${x}="",C${x}=""),"",IF(${ach}>=${tgt},"🟢 Completed",IF(TODAY()<B${x},"Not Started",IF(TODAY()>C${x},"Ended",` +
+    `IF((${ach}/${tgt})>=${pace}+${c.paceAhead},"🟢 Ahead | "&${perDay},` +
+    `IF((${ach}/${tgt})>=${pace}-${c.paceOnTrack},"🟢 On Pace | "&${perDay},` +
+    `IF((${ach}/${tgt})>=${pace}-${c.paceBehind},"🟡 Behind | "&${perDay},` +
+    `"🔴 Critical | "&${perDay}))))))),"")`
   );
 }
 
-function rowCells(r: AcmRow, x: number, c: AcmConfig): SheetCell[] {
+/** `h` is the sheet row of the campaign's first IO (it holds Targeted Clicks). */
+function rowCells(r: AcmRow, x: number, h: number, c: AcmConfig): SheetCell[] {
   const wrap = (f: string) => (r.isChild ? iferror(f) : f);
   const sumIf = (col: string) => `SUMIF($AB$2:$AB,$AB${x},$${col}$2:$${col})`;
   const fsUp = `(1+${c.fsRate})`;
   const noBudget = `OR(O${x}="",O${x}=0)`;
 
-  const E = !r.isChild
-    ? `=IF(D${x}="","",ROUND(D${x}+(D${x}*${pct(c.clickBuffer)}),0))`
-    : r.isHead
-      ? null
-      : `=MAX(E${x - 1}-F${x - 1},0)`;
+  // One target per campaign, on the main IO. Every IO's clicks count towards it.
+  const E = r.isChild ? null : `=IF(D${x}="","",ROUND(D${x}+(D${x}*${pct(c.clickBuffer)}),0))`;
+  const tgt = `$E$${h}`;
+  const ach = sumIf('F');
 
   const cells: (string | number | null)[] = [
     r.name,
@@ -52,11 +56,12 @@ function rowCells(r: AcmRow, x: number, c: AcmConfig): SheetCell[] {
     r.totalClicks,
     E,
     r.achievedClicks,
-    wrap(`=IF(OR(E${x}="",F${x}=""),"",MAX(E${x}-F${x},0))`),
+    // G: what the campaign still needs, shown once, on its last IO.
+    r.isLatest ? iferror(`=IF(${tgt}="","",MAX(${tgt}-${ach},0))`) : null,
     wrap(`=IF(OR(F${x}="",I${x}="",I${x}=0),"",F${x}/I${x})`),
     r.impressions,
-    wrap(`=IF(OR(G${x}="",H${x}="",H${x}=0),"",ROUND(G${x}/H${x},0))`),
-    wrap(`=IF(OR(I${x}="",J${x}=""),"",I${x}+J${x})`),
+    r.isLatest ? wrap(`=IF(OR(G${x}="",H${x}="",H${x}=0),"",ROUND(G${x}/H${x},0))`) : null,
+    r.isLatest ? wrap(`=IF(OR(I${x}="",J${x}=""),"",I${x}+J${x})`) : null,
     r.mediaCost,
     wrap(`=IF(L${x}="","",L${x}*${pct(c.fsRate)})`),
     // Nova: the latest IO is costed on the impressions it still needs; earlier IOs on what they have spent.
@@ -64,7 +69,7 @@ function rowCells(r: AcmRow, x: number, c: AcmConfig): SheetCell[] {
     r.isChild ? null : `=IF(D${x}="","",D${x}*${c.clientCpc})`,
     r.isHead ? `=IF(${noBudget},"",O${x}-${sumIf('L')}-${sumIf('M')}-${sumIf('N')})` : null,
     r.isHead ? `=IF(P${x}="","",P${x}/O${x})` : null,
-    wrap(healthFormula(x, c)),
+    healthFormula(x, tgt, ach, c),
     wrap(`=MAX(0,ROUNDUP(C${x}-TODAY(),0))`),
     r.comment || null,
     r.isLatest ? `=IFERROR(IF(I${x}>0,L${x}/I${x}*K${x},L${x}),L${x})` : `=L${x}`,
@@ -86,7 +91,13 @@ export function buildAcmSheetSpec(result: AcmResult, config: AcmConfig, title = 
   return {
     title,
     headers: ACM_HEADERS,
-    rows: result.rows.map((r, i) => rowCells(r, i + 2, config)),
+    rows: (() => {
+      let head = 2;
+      return result.rows.map((r, i) => {
+        if (r.isHead) head = i + 2;
+        return rowCells(r, i + 2, head, config);
+      });
+    })(),
     hiddenColumns: [GROUP_KEY_COLUMN],
   };
 }

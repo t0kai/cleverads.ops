@@ -96,17 +96,19 @@ describe('report sheet requests', () => {
     expect(toCellData(Number.NaN)).toEqual({});
   });
 
-  it('keeps every IO live: main and 2nd both calculate, each with its own margin', () => {
+  it('one target on the main IO, what is still needed on the last IO, health and margin on every IO', () => {
     const data = requests.find((r) => r.updateCells?.start.sheetId === 0 && r.updateCells.start.rowIndex === 1 && r.updateCells.start.columnIndex === 0);
     const out = data?.updateCells.rows as { values: { userEnteredValue?: Record<string, unknown> }[] }[];
     expect(out).toHaveLength(3);
     expect(out[0]?.values).toHaveLength(28);
     expect(out[0]?.values[0]?.userEnteredValue).toEqual({ stringValue: 'Alpha - 1' });
-    expect(out[0]?.values[6]?.userEnteredValue).toEqual({ formulaValue: '=IF(OR(E2="",F2=""),"",MAX(E2-F2,0))' }); // G: main still calculates
-    expect(String(out[0]?.values[17]?.userEnteredValue?.formulaValue)).toContain('Completed'); // R: real health, not "Running with"
+    expect(out[0]?.values[6]?.userEnteredValue).toBeUndefined(); // G: blank on the main IO
+    expect(out[1]?.values[6]?.userEnteredValue).toEqual({ formulaValue: '=IFERROR(IF($E$2="","",MAX($E$2-SUMIF($AB$2:$AB,$AB3,$F$2:$F),0)),"")' }); // G on the last IO
+    expect(String(out[0]?.values[17]?.userEnteredValue?.formulaValue)).toContain('SUMIF($AB$2:$AB,$AB2,$F$2:$F)>=$E$2'); // R: campaign health
+    expect(String(out[1]?.values[17]?.userEnteredValue?.formulaValue)).toContain('Completed'); // health on the 2nd too
     expect(out[0]?.values[13]?.userEnteredValue).toEqual({ formulaValue: '=IF(I2="","",(I2/1000)*0.8)' }); // N: earlier IO costed on spend
     expect(out[0]?.values[20]?.userEnteredValue).toEqual({ formulaValue: '=L2' }); // U: earlier IO projects what it spent
-    expect(out[1]?.values[4]?.userEnteredValue).toEqual({ formulaValue: '=MAX(E2-F2,0)' }); // 2nd target
+    expect(out[1]?.values[4]?.userEnteredValue).toBeUndefined(); // Targeted only on the main IO
     expect(String(out[1]?.values[23]?.userEnteredValue?.formulaValue)).toBe('=IFERROR((F3*0.6-L3*(1+0.15)-(I3/1000)*0.8)/(F3*0.6),"")'); // X
     expect(String(out[0]?.values[24]?.userEnteredValue?.formulaValue)).toContain('SUMIF($AB$2:$AB,$AB2,$F$2:$F)'); // Y on the head row
     expect(out[1]?.values[24]?.userEnteredValue).toBeUndefined();

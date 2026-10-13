@@ -49,11 +49,12 @@ const result = run(golden.today);
 const DISPLAY_2DP = new Set(['ctr', 'margin', 'projectedMargin', 'projectedMediaCost', 'projectedNetProfit']);
 
 /**
- * Oct 2026 change: an IO followed by a 2nd/3rd is no longer stopped (Required 0, "▶ Running with 2nd").
- * Every IO stays live, so on those rows these fields now hold the IO's own figures. Every money figure
- * (fees, budget, profit, margin, projections) must still match the report exactly.
+ * Oct 2026 change for campaigns with a 2nd/3rd IO: no IO is stopped any more. Targeted Clicks sit on the main IO
+ * only, what is still needed is shown once on the last IO (target − all IOs' clicks), and every IO shows the
+ * campaign's Health. The last IO's Required and every money figure (fees, budget, profit, margin, projections)
+ * must still match the report exactly.
  */
-const LIVE_ON_EARLIER_IOS = new Set(['requiredClicks', 'impressionsNeeded', 'impressionsTotal']);
+const BLANK_ON_EARLIER_IOS = ['requiredClicks', 'impressionsNeeded', 'impressionsTotal'] as const;
 
 function close(actual: number | null, expected: number | null, key: string): boolean {
   if (expected == null) return actual == null;
@@ -80,20 +81,19 @@ describe('ACM golden test · 2 Oct 2026', () => {
     it(`row ${i + 2}: ${String(exp['name'])}`, () => {
       const row = result.rows[i];
       expect(row).toBeDefined();
+      const multi = (result.groups.find((g) => g.key === row?.groupKey)?.rows.length ?? 1) > 1;
       const earlier = row?.isLatest === false;
       for (const key of numeric) {
-        if (earlier && LIVE_ON_EARLIER_IOS.has(key)) continue;
+        if (earlier && (BLANK_ON_EARLIER_IOS as readonly string[]).includes(key)) continue;
+        if (row?.isChild && key === 'targetedClicks') continue;
         const actual = row?.[key] as number | null;
         const expected = exp[key] as number | null;
         expect(close(actual, expected, key), `${key}: got ${actual}, sheet shows ${expected}`).toBe(true);
       }
-      if (earlier) {
-        // Now calculated like any other IO.
-        expect(row?.requiredClicks).toBe(row?.targetedClicks == null ? null : Math.max(row.targetedClicks - row.achievedClicks, 0));
-        expect(row?.health).not.toContain('Running with');
-      } else if (exp['health']) {
-        expect(row?.health).toBe(exp['health']);
-      }
+      if (earlier) for (const key of BLANK_ON_EARLIER_IOS) expect(row?.[key], key).toBeNull();
+      if (row?.isChild) expect(row.targetedClicks).toBeNull();
+      if (!multi && exp['health']) expect(row?.health).toBe(exp['health']);
+      if (multi) expect(row?.health).not.toContain('Running with');
     });
   });
 
@@ -122,18 +122,20 @@ describe('ACM golden test · 2 Oct 2026', () => {
     const spec = acmModule.buildSheetSpec(result, config);
     expect(spec.rows).toHaveLength(49);
     expect(spec.hiddenColumns).toEqual([28]);
-    expect(spec.rows[4]?.[4]?.value).toBe('=MAX(E5-F5,0)');
-    expect(spec.rows[3]?.[6]?.value).toBe('=IF(OR(E5="",F5=""),"",MAX(E5-F5,0))'); // main IO (sheet row 5) keeps calculating
+    expect(spec.rows[3]?.[6]?.value).toBeNull(); // main IO (sheet row 5): Required shown on the last IO only
+    expect(spec.rows[4]?.[6]?.value).toBe('=IFERROR(IF($E$5="","",MAX($E$5-SUMIF($AB$2:$AB,$AB6,$F$2:$F),0)),"")');
+    expect(spec.rows[4]?.[4]?.value).toBeNull(); // Targeted on the main IO only
   });
 });
 
 describe('ACM golden test · 3 Oct 2026 (TODAY moves on)', () => {
   const r3 = run(golden.recalculated3Oct.today);
 
-  it('matches Campaign Health and Remaining Days as the report showed them (earlier IOs now show their own health)', () => {
-    const latest = r3.rows.map((r, i) => [r.isLatest, i] as const).filter(([l]) => l).map(([, i]) => i);
-    expect(latest.map((i) => [r3.rows[i]?.health, r3.rows[i]?.daysLeft])).toEqual(
-      latest.map((i) => [golden.recalculated3Oct.rows[i]?.health, golden.recalculated3Oct.rows[i]?.daysLeft]),
+  it('matches Campaign Health and Remaining Days as the report showed them (campaigns with a 2nd IO now show the campaign health)', () => {
+    const single = r3.rows.map((r, i) => [r3.groups.find((g) => g.key === r.groupKey)?.rows.length === 1, i] as const).filter(([s]) => s).map(([, i]) => i);
+    expect(single).toHaveLength(27);
+    expect(single.map((i) => [r3.rows[i]?.health, r3.rows[i]?.daysLeft])).toEqual(
+      single.map((i) => [golden.recalculated3Oct.rows[i]?.health, golden.recalculated3Oct.rows[i]?.daysLeft]),
     );
     expect(r3.rows.map((r) => r.daysLeft)).toEqual(golden.recalculated3Oct.rows.map((r) => r.daysLeft));
     expect(r3.rows.filter((r) => !r.isLatest)).toHaveLength(11);

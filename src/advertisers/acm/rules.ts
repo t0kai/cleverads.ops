@@ -155,36 +155,33 @@ export function calculateAcm(input: ModuleInput, config: AcmConfig): AcmResult {
       };
     });
 
-    // Per-row formulas, top to bottom (a 2nd's target needs the row above).
+    // One target per campaign: Targeted sits on the main IO only. Every IO's clicks count towards it,
+    // and what is still needed is shown once, on the last IO (Oct 2026).
+    const main = drafts[0];
+    const groupTargeted = main && !main.isChild && main.total != null ? sheetRound(main.total + main.total * config.clickBuffer, 0) : null;
+    const groupAchieved = sumBlanks(drafts.map((d) => d.row.clicks));
+    const groupRequired = groupTargeted == null ? null : Math.max(groupTargeted - groupAchieved, 0);
+
     const partial: Omit<AcmRow, 'netProfit' | 'margin' | 'projectedNetProfit' | 'projectedMargin' | 'ioMargin' | 'overallMargin'>[] = [];
-    drafts.forEach((d, i) => {
-      const prev = partial[i - 1];
+    drafts.forEach((d) => {
       const F = d.row.clicks;
       const I = d.row.impressions;
       const L = d.row.cost;
       const D = d.total;
 
-      let E: number | null;
-      if (!d.isChild) {
-        E = D == null ? null : sheetRound(D + D * config.clickBuffer, 0);
-      } else if (prev) {
-        E = prev.targetedClicks == null ? null : Math.max(prev.targetedClicks - prev.achievedClicks, 0);
-      } else {
-        E = null;
-      }
-
-      // Every IO keeps running and keeps its own figures (main, 2nd and 3rd can all be live).
-      const G: number | null = E == null ? null : Math.max(E - F, 0);
+      const E = d.isChild ? null : groupTargeted;
+      const G = d.isLatest ? groupRequired : null;
       const H = I === 0 ? null : F / I;
       const J = G == null || H == null || H === 0 ? null : sheetRound(G / H, 0);
       const K = J == null ? null : I + J;
       const M = L * config.fsRate;
-      // Money: the clicks still to come are costed once, on the latest IO; earlier IOs count what they have spent.
+      // Money: the clicks still to come are costed once, on the last IO; earlier IOs count what they have spent.
       const N = d.isLatest ? (K == null ? null : (K / 1000) * config.novaCpm) : (I / 1000) * config.novaCpm;
       const O = d.isChild || D == null ? null : D * config.clientCpc;
       const U = d.isLatest ? (I > 0 && K != null ? (L / I) * K : L) : L;
 
-      const health = campaignHealth(d.start, d.end, E, F, today, config);
+      // Health on every IO: the whole campaign's pace (all IOs' clicks against the target).
+      const health = campaignHealth(d.start, d.end, groupTargeted, groupAchieved, today, config);
 
       partial.push({
         name: d.row.name,
