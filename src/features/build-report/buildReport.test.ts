@@ -134,14 +134,29 @@ describe('report sheet requests', () => {
   });
 
   it('fills Urgent with values and writes "No campaigns match." on an empty tab', () => {
-    const urgentRows = requests.find((r) => r.updateCells?.start.sheetId === 1001)?.updateCells.rows;
+    const urgentRows = requests.find((r) => r.updateCells?.start.sheetId === 1001 && r.updateCells.start.rowIndex === 1)?.updateCells.rows;
     expect(urgentRows).toHaveLength(2); // Alpha ends in 7 days: main + 2nd
     expect(urgentRows[0].values).toHaveLength(25);
     expect(urgentRows[0].values[23].userEnteredValue.numberValue).toBeCloseTo(0.675, 9); // main IO margin
-    const marginRows = requests.find((r) => r.updateCells?.start.sheetId === 1002)?.updateCells.rows;
+    const marginRows = requests.find((r) => r.updateCells?.start.sheetId === 1002 && r.updateCells.start.rowIndex === 1)?.updateCells.rows;
     expect(result.marginIssues.length ? marginRows.length : marginRows[0].values[0]).toEqual(
       result.marginIssues.length ? result.marginIssues.reduce((n, g) => n + g.rows.length, 0) : { userEnteredValue: { stringValue: 'No campaigns match.' } },
     );
+  });
+
+  it('labels Required Clicks "(without extra)" with a hover note on the Report, Urgent and Margin Issue tabs', () => {
+    const notes = requests.filter((r) => r.updateCells?.start.rowIndex === 0 && r.updateCells.start.columnIndex === 6 && r.updateCells.fields === 'userEnteredValue,note');
+    expect(notes.map((r) => r.updateCells.start.sheetId).sort()).toEqual([0, 1001, 1002]);
+    for (const r of notes) {
+      const cell = r.updateCells.rows[0].values[0];
+      expect(cell.userEnteredValue).toEqual({ stringValue: 'Required Clicks (without extra)' });
+      expect(cell.note).toContain('Total Clicks − every IO');
+      expect(cell.note).toContain('Does not include the 10% extra');
+    }
+    // Urgent/Margin copy the Report header first, then get the note written on top.
+    const copyAt = requests.findIndex((r) => r.copyPaste?.destination.sheetId === 1001);
+    const noteAt = requests.findIndex((r) => r.updateCells?.start.sheetId === 1001 && r.updateCells.fields === 'userEnteredValue,note');
+    expect(noteAt).toBeGreaterThan(copyAt);
   });
 
   it('formats the timestamp and file date in Dhaka time', () => {

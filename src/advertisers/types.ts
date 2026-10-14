@@ -26,6 +26,8 @@ export interface SheetSpec {
   readonly headers: readonly string[];
   readonly rows: readonly (readonly SheetCell[])[];
   readonly hiddenColumns: readonly number[];
+  /** Notes shown when hovering a header cell, keyed by 0-based column. */
+  readonly headerNotes?: Readonly<Record<number, string>>;
 }
 
 /** The contract every advertiser module follows. */

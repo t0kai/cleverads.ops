@@ -121,6 +121,8 @@ describe('Time Out Report tab', () => {
   it('has Campaign Type, IO and overall margin columns, group key hidden in AC', () => {
     expect(spec.headers[1]).toBe('Campaign Type');
     expect(spec.headers).not.toContain('Required Clicks / Day');
+    expect(spec.headers[7]).toBe('Required Clicks (without extra)');
+    expect(spec.headerNotes?.[7]).toContain('Total Clicks − every IO');
     expect(spec.headers[24]).toBe('IO Margin %');
     expect(spec.headers[25]).toBe('Overall Margin %');
     expect(spec.headers[TIMEOUT_GROUP_KEY_COLUMN - 1]).toBe('Group Key');

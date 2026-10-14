@@ -9,7 +9,7 @@ import type { AcmResult, AcmRow } from './rules';
  */
 export const ACM_HEADERS = [
   'Campaign name', 'Start date', 'End date', 'Total Clicks', 'Targeted Clicks', 'Achieved Clicks',
-  'Required Clicks', 'Actual Average CTR', 'Impressions spent', 'Impression needed for required clicks',
+  'Required Clicks (without extra)', 'Actual Average CTR', 'Impressions spent', 'Impression needed for required clicks',
   'Required Total Impression', 'Inventory cost', 'FS Service fee', 'Nova fee', 'Budget', 'Net profit',
   'Margin %', 'Campaign Health', 'Remaing Days', 'Comment', 'Projected Media Cost', 'Projected Net Profit',
   'Projected Margin %', 'IO Margin %', 'Overall Margin %', '', 'Last Updated:', 'Group Key',
@@ -19,6 +19,12 @@ export const ACM_HEADERS = [
 export const GROUP_KEY_COLUMN = 28;
 
 const pct = (rate: number) => `${+(rate * 100).toFixed(6)}%`;
+
+/** Column G (0-based 6): what the campaign still needs. */
+export const ACM_REQUIRED_COLUMN = 6;
+/** Hover note on the Required Clicks header, so anyone reading the sheet knows the extra is left out. */
+export const requiredNote = (c: Pick<AcmConfig, 'clickBuffer'>) =>
+  `Clicks still needed = Total Clicks − every IO's Achieved Clicks (main + 2nd + 3rd). Does not include the ${pct(c.clickBuffer)} extra in Targeted Clicks. Shown on the campaign's last IO.`;
 const iferror = (f: string) => `=IFERROR(${f.replace(/^=/, '')},"")`;
 
 /**
@@ -100,5 +106,6 @@ export function buildAcmSheetSpec(result: AcmResult, config: AcmConfig, title = 
       });
     })(),
     hiddenColumns: [GROUP_KEY_COLUMN],
+    headerNotes: { [ACM_REQUIRED_COLUMN]: requiredNote(config) },
   };
 }

@@ -8,6 +8,7 @@ import type { TimeOutResult, TimeOutRow } from './rules';
  * Every IO of a campaign stays live (main, 2nd, 3rd can all run); each gets its own margin.
  *
  * A Campaign name · B Campaign Type · C Start · D End · E Total Clicks · F Targeted · G Achieved · H Required
+ * (H reads "Required Clicks (without extra)": Total − every IO's clicks, no 10% buffer.)
  * I CTR · J Impressions · K Impressions needed · L Required total impressions · M Inventory cost · N FS fee
  * O Nova fee · P Budget · Q Net profit · R Margin % · S Campaign Health (with clicks needed per day)
  * T Remaining Days · U Comment · V–X Projected · Y IO Margin % · Z Overall Margin %
@@ -15,7 +16,7 @@ import type { TimeOutResult, TimeOutRow } from './rules';
  */
 export const TIMEOUT_HEADERS = [
   'Campaign name', 'Campaign Type', 'Start date', 'End date', 'Total Clicks', 'Targeted Clicks', 'Achieved Clicks',
-  'Required Clicks', 'Actual Average CTR', 'Impressions spent', 'Impression needed for required clicks',
+  'Required Clicks (without extra)', 'Actual Average CTR', 'Impressions spent', 'Impression needed for required clicks',
   'Required Total Impression', 'Inventory cost', 'FS Service fee', 'Nova fee', 'Budget', 'Net profit', 'Margin %',
   'Campaign Health', 'Remaining Days', 'Comment', 'Projected Media Cost', 'Projected Net Profit', 'Projected Margin %',
   'IO Margin %', 'Overall Margin %', '', 'Last Updated:', 'Group Key',
@@ -27,6 +28,12 @@ export const TIMEOUT_DATA_COLUMNS = 26;
 export const TIMEOUT_GROUP_KEY_COLUMN = 29;
 
 const pct = (rate: number) => `${+(rate * 100).toFixed(6)}%`;
+
+/** Column H (0-based 7): what the campaign still needs. */
+export const TIMEOUT_REQUIRED_COLUMN = 7;
+/** Hover note on the Required Clicks header, so anyone reading the sheet knows the extra is left out. */
+export const requiredNote = (c: Pick<TimeOutConfig, 'clickBuffer'>) =>
+  `Clicks still needed = Total Clicks − every IO's Achieved Clicks (main + 2nd + 3rd). Does not include the ${pct(c.clickBuffer)} extra in Targeted Clicks. Shown on the campaign's last IO.`;
 const iferror = (f: string) => `=IFERROR(${f.replace(/^=/, '')},"")`;
 
 /**
@@ -107,5 +114,6 @@ export function buildTimeOutSheetSpec(result: TimeOutResult, config: TimeOutConf
       });
     })(),
     hiddenColumns: [TIMEOUT_GROUP_KEY_COLUMN],
+    headerNotes: { [TIMEOUT_REQUIRED_COLUMN]: requiredNote(config) },
   };
 }

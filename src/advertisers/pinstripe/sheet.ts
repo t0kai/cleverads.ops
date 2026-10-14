@@ -13,7 +13,7 @@ import type { PinstripeResult, PinstripeRow } from './rules';
  * AC Last Updated · AD Group Key (hidden)
  */
 export const PINSTRIPE_HEADERS = [
-  'Campaign name', 'Type', 'Start date', 'End date', 'Total target', 'Targeted', 'Achieved', 'Required',
+  'Campaign name', 'Type', 'Start date', 'End date', 'Total target', 'Targeted', 'Achieved', 'Required (without extra)',
   'Clicks', 'Impressions spent', 'Actual Average CTR', 'Impressions needed', 'Required Total Impression',
   'Inventory cost', 'FS Service fee', 'Nova fee', 'Budget', 'Net profit', 'Margin %', 'Campaign Health',
   'Remaining Days', 'Comment', 'Projected Media Cost', 'Projected Net Profit', 'Projected Margin %', 'IO Margin %',
@@ -26,6 +26,12 @@ export const PINSTRIPE_DATA_COLUMNS = 27;
 export const PINSTRIPE_GROUP_KEY_COLUMN = 30;
 
 const pct = (rate: number) => `${+(rate * 100).toFixed(6)}%`;
+
+/** Column H (0-based 7): what the campaign still needs. */
+export const PINSTRIPE_REQUIRED_COLUMN = 7;
+/** Hover note on the Required header, so anyone reading the sheet knows the extra is left out. */
+export const requiredNote = (c: Pick<PinstripeConfig, 'targetBuffer'>) =>
+  `Still needed = Total target − every IO's Achieved (clicks, or impressions for impression campaigns). Does not include the ${pct(c.targetBuffer)} extra in Targeted. Shown on the campaign's last IO.`;
 const iferror = (f: string) => `=IFERROR(${f.replace(/^=/, '')},"")`;
 
 /**
@@ -113,5 +119,6 @@ export function buildPinstripeSheetSpec(result: PinstripeResult, config: Pinstri
       });
     })(),
     hiddenColumns: [PINSTRIPE_GROUP_KEY_COLUMN],
+    headerNotes: { [PINSTRIPE_REQUIRED_COLUMN]: requiredNote(config) },
   };
 }

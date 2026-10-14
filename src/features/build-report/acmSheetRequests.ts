@@ -50,6 +50,16 @@ const cells = (sheetId: number, row: number, col: number, rows: readonly (readon
   },
 });
 
+/** Header cells that carry a hover note (e.g. Required Clicks: "without extra"). Writes the header text too. */
+const headerNotes = (sheetId: number, spec: Pick<SheetSpec, 'headers' | 'headerNotes'>) =>
+  Object.entries(spec.headerNotes ?? {}).map(([col, note]) => ({
+    updateCells: {
+      start: { sheetId, rowIndex: 0, columnIndex: Number(col) },
+      rows: [{ values: [{ ...toCellData(spec.headers[Number(col)] ?? null), note }] }],
+      fields: 'userEnteredValue,note',
+    },
+  }));
+
 /** Number formats the Apps Script sets on data rows. */
 function numberFormats(sheetId: number, rowCount: number): object[] {
   const fmt = (startCol: number, endCol: number, type: string, pattern: string) => ({
@@ -98,7 +108,7 @@ export function rowValues(r: AcmRow): (number | string | null)[] {
   ];
 }
 
-function valuesTab(sheetId: number, reportId: number, groups: readonly AcmGroupResult[], c: AcmConfig): object[] {
+function valuesTab(sheetId: number, reportId: number, groups: readonly AcmGroupResult[], c: AcmConfig, spec: SheetSpec): object[] {
   const rows = groups.flatMap((g) => g.rows.map(rowValues));
   return [
     // Header with the Report's look (template formats).
@@ -110,6 +120,7 @@ function valuesTab(sheetId: number, reportId: number, groups: readonly AcmGroupR
         pasteOrientation: 'NORMAL',
       },
     },
+    ...headerNotes(sheetId, spec),
     rows.length ? cells(sheetId, 1, 0, rows) : cells(sheetId, 1, 0, [['No campaigns match.']]),
     ...(rows.length ? numberFormats(sheetId, rows.length) : []),
     ...conditionalRules(sheetId, c),
@@ -158,6 +169,8 @@ export function buildReportRequests({ ids, spec, result, config, lastUpdated }: 
       },
     },
     cells(ids.report, 0, 20, [EXTRA_HEADERS]),
+    // The template's G1 says "Required Clicks"; this report's copy gets "(without extra)" and a note. The template is untouched.
+    ...headerNotes(ids.report, spec),
     cells(ids.report, 0, UPDATED_COL, [['Last Updated:', 'Group Key']]),
 
     // Report rows: inputs as values, everything calculated as live formulas.
@@ -174,8 +187,8 @@ export function buildReportRequests({ ids, spec, result, config, lastUpdated }: 
     },
 
     // Urgent: ending soonest first. Margin Issue: lowest projected margin first.
-    ...valuesTab(ids.urgent, ids.report, result.urgent, config),
-    ...valuesTab(ids.margin, ids.report, result.marginIssues, config),
+    ...valuesTab(ids.urgent, ids.report, result.urgent, config, spec),
+    ...valuesTab(ids.margin, ids.report, result.marginIssues, config, spec),
   ];
 }
 

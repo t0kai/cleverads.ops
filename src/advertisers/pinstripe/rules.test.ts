@@ -135,6 +135,8 @@ describe('Pinstripe Report tab', () => {
   it('has the Type column and a hidden group key in AB', () => {
     expect(spec.headers).toBe(PINSTRIPE_HEADERS);
     expect(spec.headers[1]).toBe('Type');
+    expect(spec.headers[7]).toBe('Required (without extra)');
+    expect(spec.headerNotes?.[7]).toContain('Total target − every IO');
     expect(spec.headers[PINSTRIPE_GROUP_KEY_COLUMN - 1]).toBe('Group Key');
     expect(spec.hiddenColumns).toEqual([PINSTRIPE_GROUP_KEY_COLUMN]);
     expect(spec.rows.every((row) => row.length === PINSTRIPE_HEADERS.length)).toBe(true);

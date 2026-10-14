@@ -209,6 +209,16 @@ describe('every write fits inside the tabs', () => {
   it('never writes outside a tab', () => {
     expect(checkGrid(requests)).toEqual([]);
   });
+  it('labels Required "(without extra)" with a hover note on every tab', () => {
+    const notes = requests.filter((r) => r.updateCells?.start.rowIndex === 0 && r.updateCells.start.columnIndex === 7 && r.updateCells.fields === 'userEnteredValue,note');
+    expect(notes.map((r) => r.updateCells.start.sheetId).sort((a: number, b: number) => a - b)).toEqual([0, 2001, 2002]);
+    for (const r of notes) {
+      const cell = r.updateCells.rows[0].values[0];
+      expect(cell.userEnteredValue).toEqual({ stringValue: 'Required (without extra)' });
+      expect(cell.note).toContain('impressions for impression campaigns');
+      expect(cell.note).toContain('Does not include the 10% extra');
+    }
+  });
   it('the checker catches the old 26-column mistake', () => {
     const narrowed = requests.map((r) =>
       r.updateSheetProperties ? { updateSheetProperties: { ...r.updateSheetProperties, properties: { ...r.updateSheetProperties.properties, gridProperties: { frozenRowCount: 1 } } } } : r,

@@ -46,6 +46,16 @@ const cells = (sheetId: number, row: number, col: number, rows: readonly (readon
   },
 });
 
+/** Header cells that carry a hover note (e.g. Required Clicks: "without extra"). Writes the header text too. */
+const headerNotes = (sheetId: number, spec: Pick<SheetSpec, 'headers' | 'headerNotes'>) =>
+  Object.entries(spec.headerNotes ?? {}).map(([col, note]) => ({
+    updateCells: {
+      start: { sheetId, rowIndex: 0, columnIndex: Number(col) },
+      rows: [{ values: [{ ...toCellData(spec.headers[Number(col)] ?? null), note }] }],
+      fields: 'userEnteredValue,note',
+    },
+  }));
+
 /** Bold header row with a light fill, wrapped text and a taller row. */
 function headerRow(sheetId: number, headers: readonly string[]): object[] {
   return [
@@ -132,10 +142,11 @@ export function rowValues(r: PinstripeRow): (number | string | null)[] {
   ];
 }
 
-function valuesTab(sheetId: number, groups: readonly PinstripeGroupResult[], c: PinstripeConfig): object[] {
+function valuesTab(sheetId: number, groups: readonly PinstripeGroupResult[], c: PinstripeConfig, spec: SheetSpec): object[] {
   const rows = groups.flatMap((g) => g.rows.map(rowValues));
   return [
     ...headerRow(sheetId, PINSTRIPE_HEADERS.slice(0, LAST_DATA_COL)),
+    ...headerNotes(sheetId, spec),
     rows.length ? cells(sheetId, 1, 0, rows) : cells(sheetId, 1, 0, [['No campaigns match.']]),
     ...(rows.length ? numberFormats(sheetId, rows.length) : []),
     ...conditionalRules(sheetId, c),
@@ -190,6 +201,7 @@ export function buildPinstripeRequests({ ids, spec, result, config, trackerTab, 
 
     // Report: header, rows (inputs as values, everything calculated as live formulas), last-updated stamp.
     ...headerRow(ids.report, spec.headers),
+    ...headerNotes(ids.report, spec),
     cells(ids.report, 1, 0, spec.rows.map((r) => r.map((cell) => cell.value))),
     cells(ids.report, 1, UPDATED_COL, [[lastUpdated]]),
     ...numberFormats(ids.report, n),
@@ -203,8 +215,8 @@ export function buildPinstripeRequests({ ids, spec, result, config, trackerTab, 
     },
 
     // Urgent: ending soonest first. Margin Issue: lowest projected margin first.
-    ...valuesTab(ids.urgent, result.urgent, config),
-    ...valuesTab(ids.margin, result.marginIssues, config),
+    ...valuesTab(ids.urgent, result.urgent, config, spec),
+    ...valuesTab(ids.margin, result.marginIssues, config, spec),
 
     // Settings
     ...headerRow(ids.settings, settings[0] ?? []),

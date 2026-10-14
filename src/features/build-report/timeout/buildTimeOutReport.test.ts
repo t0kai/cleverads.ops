@@ -137,6 +137,15 @@ describe('every write fits inside the tabs', () => {
   it('never writes outside a tab', () => {
     expect(checkGrid(requests)).toEqual([]);
   });
+  it('labels Required Clicks "(without extra)" with a hover note on every tab', () => {
+    const notes = requests.filter((r) => r.updateCells?.start.rowIndex === 0 && r.updateCells.start.columnIndex === 7 && r.updateCells.fields === 'userEnteredValue,note');
+    expect(notes.map((r) => r.updateCells.start.sheetId).sort((a: number, b: number) => a - b)).toEqual([0, 3001, 3002]);
+    for (const r of notes) {
+      const cell = r.updateCells.rows[0].values[0];
+      expect(cell.userEnteredValue).toEqual({ stringValue: 'Required Clicks (without extra)' });
+      expect(cell.note).toContain('Does not include the 10% extra');
+    }
+  });
 });
 
 describe('buildTimeOutReport against a fake Google', () => {
