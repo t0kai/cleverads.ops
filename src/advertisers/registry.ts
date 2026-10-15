@@ -11,6 +11,7 @@ const loaders: Record<string, () => Promise<AnyModule>> = {
   acm: () => import('./acm').then((m) => m.acmModule),
   pinstripe: () => import('./pinstripe').then((m) => m.pinstripeModule),
   timeout: () => import('./timeout').then((m) => m.timeOutModule),
+  benzinga: () => import('./benzinga').then((m) => m.benzingaModule),
 };
 
 export function listModuleIds(): string[] {

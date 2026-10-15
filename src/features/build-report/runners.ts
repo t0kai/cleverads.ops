@@ -107,6 +107,38 @@ const loaders: Record<string, () => Promise<ReportRunner>> = {
       },
     };
   },
+  benzinga: async () => {
+    const [{ BENZINGA_DEFAULTS }, { groupBenzingaCampaigns }, { buildBenzingaReport }] = await Promise.all([
+      import('@/advertisers/benzinga/config'),
+      import('@/advertisers/benzinga/names'),
+      import('./benzinga/buildBenzingaReport'),
+    ]);
+    const c = BENZINGA_DEFAULTS;
+    return {
+      label: 'benzinga',
+      version: 'rules v1',
+      rates: [
+        { label: 'Billing currency', value: 'US$ (costs in A$)' },
+        { label: 'Client CPC', value: `US$${c.clientCpcUsd.toFixed(2)}` },
+        { label: 'CPM budget', value: 'from the tracker (US$)' },
+        { label: 'USD → AUD', value: "each campaign's tracker rate" },
+        { label: 'Target buffer', value: pct(c.targetBuffer) },
+        { label: 'DV360/FS fee', value: `${+(c.fsRate * 100).toFixed(2)}%` },
+        { label: 'Nova fee', value: `${money(c.novaCpm)} CPM` },
+        { label: 'Minimum margin', value: pct(c.minMargin) },
+        { label: 'Urgent window', value: `${c.urgentDays} days` },
+        { label: 'CTR range', value: `${pct(c.ctrLow)}–${pct(c.ctrHigh)}` },
+      ],
+      urgentDays: c.urgentDays,
+      writeLabel: 'Writing Report, Urgent, Margin Issue and Settings tabs',
+      build: ({ sources, ...run }) => buildBenzingaReport({ ...run, sources, config: c }),
+      // Benzinga names follow-on IOs "#2 … #N", not "2nd"/"3rd"; every IO belongs to some campaign.
+      groupCheck: (rows) => ({
+        campaignsWithFollowOn: groupBenzingaCampaigns(rows).filter((g) => g.members.length > 1).length,
+        orphanFollowOns: [],
+      }),
+    };
+  },
 };
 
 export async function loadRunner(moduleId: string | null): Promise<ReportRunner | null> {

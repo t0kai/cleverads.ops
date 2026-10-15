@@ -82,4 +82,20 @@ export const SEED_ADVERTISERS: readonly AdvertiserSummary[] = [
       reportPrefix: 'Time Out Optimization Report - ',
     },
   },
+  {
+    id: 'benzinga',
+    name: 'Benzinga (US)',
+    moduleId: 'benzinga',
+    rulesVersion: 'v1',
+    timeZone: 'Australia/Sydney',
+    sources: {
+      // Same CAMPAIGN TRACKER GLOBAL file, Benzinga's own tab. Read only.
+      trackerId: '157r8wGSMc11tV6jvRCny3JxUlHLxOose_HMikAm8BY8',
+      trackerTab: 'Benzinga (US)',
+      trackerHeaderRow: 5,
+      // Same Results folder as the other reports.
+      outputFolderId: '1Z_YVfaCfV4CnqB6uKJb_Blh3Fn0EE0PK',
+      reportPrefix: 'Benzinga Optimization Report - ',
+    },
+  },
 ];
