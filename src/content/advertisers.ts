@@ -98,4 +98,20 @@ export const SEED_ADVERTISERS: readonly AdvertiserSummary[] = [
       reportPrefix: 'Benzinga Optimization Report - ',
     },
   },
+  {
+    id: 'ufurnish',
+    name: 'Ufurnish',
+    moduleId: 'ufurnish',
+    rulesVersion: 'v1',
+    timeZone: 'Australia/Sydney',
+    sources: {
+      // Same CAMPAIGN TRACKER GLOBAL file, Ufurnish's own tab. Read only.
+      trackerId: '157r8wGSMc11tV6jvRCny3JxUlHLxOose_HMikAm8BY8',
+      trackerTab: 'Ufurnish',
+      trackerHeaderRow: 5,
+      // Same Results folder as the other reports.
+      outputFolderId: '1Z_YVfaCfV4CnqB6uKJb_Blh3Fn0EE0PK',
+      reportPrefix: 'Ufurnish Optimization Report - ',
+    },
+  },
 ];

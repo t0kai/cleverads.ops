@@ -139,6 +139,38 @@ const loaders: Record<string, () => Promise<ReportRunner>> = {
       }),
     };
   },
+  ufurnish: async () => {
+    const [{ UFURNISH_DEFAULTS }, { groupUfurnishCampaigns }, { buildUfurnishReport }] = await Promise.all([
+      import('@/advertisers/ufurnish/config'),
+      import('@/advertisers/ufurnish/names'),
+      import('./ufurnish/buildUfurnishReport'),
+    ]);
+    const c = UFURNISH_DEFAULTS;
+    return {
+      label: 'ufurnish',
+      version: 'rules v1',
+      rates: [
+        { label: 'Billing currency', value: '£ (costs in A$)' },
+        { label: 'Client CPC', value: `£${c.clientCpcGbp.toFixed(2)}` },
+        { label: 'Client CPCV', value: `£${c.clientCpcvGbp.toFixed(2)}` },
+        { label: 'A$ budget', value: 'from the tracker' },
+        { label: 'Target buffer', value: pct(c.targetBuffer) },
+        { label: 'FS service fee', value: pct(c.fsRate) },
+        { label: 'Nova fee', value: `${money(c.novaCpm)} CPM` },
+        { label: 'Minimum margin', value: pct(c.minMargin) },
+        { label: 'Urgent window', value: `${c.urgentDays} days` },
+        { label: 'CTR range', value: `${pct(c.ctrLow)}–${pct(c.ctrHigh)}` },
+      ],
+      urgentDays: c.urgentDays,
+      writeLabel: 'Writing Report, Urgent, Margin Issue and Settings tabs',
+      build: ({ sources, ...run }) => buildUfurnishReport({ ...run, sources, config: c }),
+      // Ufurnish names follow-on IOs "IO 2", "IO 3"; every IO belongs to some campaign.
+      groupCheck: (rows) => ({
+        campaignsWithFollowOn: groupUfurnishCampaigns(rows).filter((g) => g.members.length > 1).length,
+        orphanFollowOns: [],
+      }),
+    };
+  },
 };
 
 export async function loadRunner(moduleId: string | null): Promise<ReportRunner | null> {

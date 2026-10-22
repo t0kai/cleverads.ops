@@ -12,6 +12,7 @@ const loaders: Record<string, () => Promise<AnyModule>> = {
   pinstripe: () => import('./pinstripe').then((m) => m.pinstripeModule),
   timeout: () => import('./timeout').then((m) => m.timeOutModule),
   benzinga: () => import('./benzinga').then((m) => m.benzingaModule),
+  ufurnish: () => import('./ufurnish').then((m) => m.ufurnishModule),
 };
 
 export function listModuleIds(): string[] {
