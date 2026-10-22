@@ -140,7 +140,7 @@ describe('ACM golden test · 2 Oct 2026', () => {
       const mine = derived.get(i) ?? {};
       for (const key of numeric) {
         if (earlier && (BLANK_ON_EARLIER_IOS as readonly string[]).includes(key)) continue;
-        if (row?.isChild && key === 'targetedClicks') continue;
+        if (row?.isChild && (key === 'targetedClicks' || key === 'totalClicks')) continue; // checked below (Oct 2026 rule)
         const actual = row?.[key] as number | null;
         const newRule = (row?.isLatest && (REQUIRED_FIELDS as readonly string[]).includes(key)) || (row?.isHead && (HEAD_FIELDS as readonly string[]).includes(key));
         if (newRule) {
@@ -152,7 +152,15 @@ describe('ACM golden test · 2 Oct 2026', () => {
         expect(close(actual, expected, key), `${key}: got ${actual}, sheet shows ${expected}`).toBe(true);
       }
       if (earlier) for (const key of BLANK_ON_EARLIER_IOS) expect(row?.[key], key).toBeNull();
-      if (row?.isChild) expect(row.targetedClicks).toBeNull();
+      if (row?.isChild) {
+        // A 2nd/3rd IO shows what is left for it: main Total − every earlier IO's clicks, and that + 10% as Targeted.
+        const first = result.rows.findIndex((r) => r.groupKey === row.groupKey);
+        const mainTotal = num(golden.expected[first]?.['totalClicks']);
+        const earlierClicks = golden.expected.slice(first, i).reduce((s, e) => s + (num(e['achievedClicks']) ?? 0), 0);
+        const own = mainTotal == null ? null : Math.max(mainTotal - earlierClicks, 0);
+        expect(row.totalClicks).toBe(own);
+        expect(row.targetedClicks).toBe(own == null ? null : Math.round(own * 1.1));
+      }
       const head = derived.get(result.rows.findIndex((r) => r.groupKey === row?.groupKey)) ?? {};
       expect(row?.health).toBe(campaignHealth(row?.start ?? null, row?.end ?? null, head['groupTotal'] ?? null, head['groupAchieved'] ?? 0, result.today, config));
       if (multi) expect(row?.health).not.toContain('Running with');
@@ -195,7 +203,10 @@ describe('ACM golden test · 2 Oct 2026', () => {
     expect(spec.hiddenColumns).toEqual([28]);
     expect(spec.rows[3]?.[6]?.value).toBeNull(); // main IO (sheet row 5): Required shown on the last IO only
     expect(spec.rows[4]?.[6]?.value).toBe('=IFERROR(IF($D$5="","",MAX($D$5-SUMIF($AB$2:$AB,$AB6,$F$2:$F),0)),"")'); // Total Clicks − all IOs
-    expect(spec.rows[4]?.[4]?.value).toBeNull(); // Targeted on the main IO only
+    // The 2nd IO's own Total and Targeted (Oct 2026): main Total − main's clicks, + 10%.
+    expect(spec.rows[4]?.[3]?.value).toBe('=IF($D$5="","",MAX($D$5-SUM($F$5:F5),0))');
+    expect(spec.rows[4]?.[4]?.value).toBe('=IF(D6="","",ROUND(D6+(D6*10%),0))');
+    expect(result.groups[3]?.rows[1]).toMatchObject({ totalClicks: 853, targetedClicks: 938, requiredClicks: 675 }); // 2,000 − 1,147; 853 − 178
   });
 });
 

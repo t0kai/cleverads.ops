@@ -12,5 +12,7 @@ export const acmModule: AdvertiserModule<AcmConfig, AcmResult> = {
   buildSheetSpec: (result, config) => buildAcmSheetSpec(result, config),
 };
 
+export { ACM_COL, ACM_COLUMNS, ACM_DATA_COLUMNS, ACM_HEADERS, ACM_LETTER, GROUP_KEY_COLUMN, acmRowValues } from './sheet';
+export type { AcmColumn } from './sheet';
 export type { AcmConfig } from './config';
 export type { AcmResult, AcmRow, AcmGroupResult } from './rules';

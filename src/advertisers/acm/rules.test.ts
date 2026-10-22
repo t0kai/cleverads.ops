@@ -63,7 +63,8 @@ describe('calculateAcm edge cases', () => {
     );
     expect(r.rows[1]?.start).toBe(day(1));
     expect(r.rows[1]?.end).toBe(day(30));
-    expect(r.rows[1]?.targetedClicks).toBeNull(); // one target per campaign, on the main IO
+    // The 2nd IO's own Total = main Total − main's clicks (100 − 10), Targeted + 10%.
+    expect(r.rows[1]).toMatchObject({ totalClicks: 90, targetedClicks: 99, budget: null });
     expect(r.rows[1]?.requiredClicks).toBe(80); // Total 100 − (10 + 10), shown on the last IO
   });
   it('zero impressions never divides by zero', () => {
@@ -108,9 +109,30 @@ describe('one target per campaign, every IO live', () => {
   );
   const [main, second] = r.rows;
 
-  it('shows Targeted on the main IO and what is still needed (Total − all clicks) on the last IO', () => {
-    expect(main).toMatchObject({ targetedClicks: 550, requiredClicks: null, impressionsNeeded: null, isLatest: false });
-    expect(second).toMatchObject({ targetedClicks: null, requiredClicks: 360, isLatest: true }); // Total 500 − (100 + 40); no 10% buffer
+  it('each IO has its own Total and Targeted; what is still needed (Total − all clicks) is on the last IO', () => {
+    expect(main).toMatchObject({ totalClicks: 500, targetedClicks: 550, requiredClicks: null, impressionsNeeded: null, isLatest: false, budget: 300 });
+    // 2nd: 500 − 100 = 400 left for it, + 10% = 440; still needed 400 − 40 = 360 (no 10% buffer). No second budget.
+    expect(second).toMatchObject({ totalClicks: 400, targetedClicks: 440, requiredClicks: 360, isLatest: true, budget: null });
+  });
+
+  it('a 3rd IO gets main Total − the 1st and 2nd IOs\' clicks', () => {
+    const three = calculateAcm(
+      {
+        today: day(3),
+        rows: [
+          { name: 'Gamma', impressions: 1000, clicks: 120, cost: 1, objective: '', status: '' },
+          { name: 'Gamma 2nd', impressions: 1000, clicks: 50, cost: 1, objective: '', status: '' },
+          { name: 'Gamma 3rd', impressions: 1000, clicks: 10, cost: 1, objective: '', status: '' },
+        ],
+        targets: new Map([['gamma', { start: day(1), end: day(20), clicks: 300 }]]),
+      },
+      ACM_DEFAULTS,
+    );
+    expect(three.rows.map((x) => [x.totalClicks, x.targetedClicks, x.requiredClicks])).toEqual([
+      [300, 330, null],
+      [180, 198, null], // 300 − 120
+      [130, 143, 120], // 300 − 120 − 50; still needed 130 − 10
+    ]);
   });
 
   it('shows the campaign health on every IO', () => {

@@ -55,8 +55,10 @@ export interface BenzingaRow {
   readonly isLatest: boolean;
   readonly start: number | null; // C
   readonly end: number | null; // D
-  readonly totalTarget: number | null; // E
-  readonly targeted: number | null; // F (display only: Total + buffer)
+  /** E: first IO = tracker target. A follow-on IO = what is left for it: Total − every earlier IO's delivery (not CPCV). */
+  readonly totalTarget: number | null;
+  /** F: Total + buffer, on every IO that has a Total (display only). */
+  readonly targeted: number | null;
   readonly achieved: number | null; // G (clicks for CPC, impressions for CPM, blank for CPCV)
   readonly required: number | null; // H (Total − every IO's Achieved, last IO only)
   readonly clicks: number; // I
@@ -219,11 +221,14 @@ export function calculateBenzinga(input: BenzingaInput, config: BenzingaConfig):
     const start = t?.start ?? null;
     const end = t?.end ?? null;
 
+    let earlierDelivery = 0; // clicks (CPC) or impressions (CPM) of the IOs above this one
     const partial: Draft[] = g.members.map((m, i) => {
       const isHead = i === 0;
       const isLatest = i === g.members.length - 1;
       const { clicks, impressions, cost: N } = m.item;
-      const E = isHead ? (t?.target ?? null) : null;
+      // A follow-on IO shows what is left for it: Total − every earlier IO's delivery (Oct 2026). CPCV has no delivery to count.
+      const E = isHead ? (t?.target ?? null) : groupTotal == null ? null : Math.max(groupTotal - earlierDelivery, 0);
+      earlierDelivery += achievedOf(m.item) ?? 0;
       const H = isLatest ? groupRequired : null;
       const K = impressions === 0 ? null : clicks / impressions;
       const L = H == null ? null : type === 'CPM' ? H : K == null || K === 0 ? null : sheetRound(H / K, 0);

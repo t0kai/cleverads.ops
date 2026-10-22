@@ -1,4 +1,7 @@
-import { PINSTRIPE_DATA_COLUMNS, PINSTRIPE_GROUP_KEY_COLUMN, PINSTRIPE_HEADERS, type PinstripeConfig, type PinstripeGroupResult, type PinstripeResult, type PinstripeRow } from '@/advertisers/pinstripe';
+import {
+  PINSTRIPE_COL, PINSTRIPE_DATA_COLUMNS, PINSTRIPE_GROUP_KEY_COLUMN, PINSTRIPE_HEADERS, PINSTRIPE_LETTER, pinstripeRowValues,
+  type PinstripeColumn, type PinstripeConfig, type PinstripeGroupResult, type PinstripeResult, type PinstripeRow,
+} from '@/advertisers/pinstripe';
 import type { SheetCell, SheetSpec } from '@/advertisers/types';
 
 /**
@@ -13,8 +16,8 @@ export interface PinstripeSheetIds {
   readonly settings: number;
 }
 
-const LAST_DATA_COL = PINSTRIPE_DATA_COLUMNS; // A–AA
-const UPDATED_COL = 28; // AC (0-based)
+const LAST_DATA_COL = PINSTRIPE_DATA_COLUMNS; // A … Comment
+const UPDATED_COL = PINSTRIPE_COL.updated; // 0-based
 const GROUP_COL = PINSTRIPE_GROUP_KEY_COLUMN - 1; // AD (0-based)
 /** A new spreadsheet has only 26 columns (A–Z); Pinstripe writes up to AD, so every tab is widened first. */
 export const GRID_COLUMNS = PINSTRIPE_HEADERS.length + 2;
@@ -99,15 +102,15 @@ function numberFormats(sheetId: number, rowCount: number): object[] {
       fields: 'userEnteredFormat.numberFormat',
     },
   });
+  const C = PINSTRIPE_COL;
   return [
-    fmt(2, 4, 'DATE', 'dd/MM/yyyy'), // C:D
-    fmt(4, 10, 'NUMBER', '#,##0'), // E:J
-    fmt(10, 11, 'PERCENT', '0.00%'), // K
-    fmt(11, 13, 'NUMBER', '#,##0'), // L:M
-    fmt(13, 18, 'NUMBER', '#,##0.00'), // N:R
-    fmt(18, 19, 'PERCENT', '0.00%'), // S
-    fmt(22, 24, 'NUMBER', '#,##0.00'), // W:X
-    fmt(24, 27, 'PERCENT', '0.00%'), // Y:AA
+    fmt(C.start, C.end + 1, 'DATE', 'dd/MM/yyyy'),
+    fmt(C.total, C.impressions + 1, 'NUMBER', '#,##0'),
+    fmt(C.ctr, C.ctr + 1, 'PERCENT', '0.00%'),
+    fmt(C.imprNeeded, C.imprTotal + 1, 'NUMBER', '#,##0'),
+    fmt(C.margin, C.overallMargin + 1, 'PERCENT', '0.00%'), // the four margins, side by side
+    fmt(C.media, C.netProfit + 1, 'NUMBER', '#,##0.00'),
+    fmt(C.projMedia, C.projNet + 1, 'NUMBER', '#,##0.00'),
   ];
 }
 
@@ -115,31 +118,29 @@ function numberFormats(sheetId: number, rowCount: number): object[] {
 export function conditionalRules(sheetId: number, c: PinstripeConfig): object[] {
   const custom = (formula: string, range: object, format: object) => ({ booleanRule: { condition: { type: 'CUSTOM_FORMULA', values: [{ userEnteredValue: formula }] }, format }, ranges: [range] });
   const bg = (hex: string) => ({ backgroundColor: rgb(hex) });
+  const L = PINSTRIPE_LETTER;
+  const col = (k: PinstripeColumn) => colsFrom2(sheetId, PINSTRIPE_COL[k]);
+  const red = (k: PinstripeColumn) => custom(`=AND(ISNUMBER($${L[k]}2),$${L[k]}2<${c.minMargin})`, col(k), bg('#F4CCCC'));
   const rules = [
-    custom(`=AND($C2<>"",INT($C2)>=TODAY()-${c.newCampaignDays},INT($C2)<=TODAY())`, colsFrom2(sheetId, 2), bg('#CFE2F3')),
-    custom(`=AND($D2<>"",INT($D2)>=TODAY(),INT($D2)<=TODAY()+${c.endHighlightDays})`, colsFrom2(sheetId, 3), bg('#FFF2CC')),
-    custom(`=AND($B2="Clicks",ISNUMBER($H2),$H2<10)`, colsFrom2(sheetId, 7), bg('#00B050')),
-    custom(`=AND($B2="Clicks",ISNUMBER($H2),$H2<30)`, colsFrom2(sheetId, 7), bg('#C6EFCE')),
-    custom(`=AND(ISNUMBER($K2),OR($K2<${c.ctrLow},$K2>${c.ctrHigh}))`, colsFrom2(sheetId, 10), bg('#F4CCCC')),
-    custom(`=AND(ISNUMBER($S2),$S2<${c.minMargin})`, colsFrom2(sheetId, 18), bg('#F4CCCC')),
-    custom(`=AND(ISNUMBER($Y2),$Y2<${c.minMargin})`, colsFrom2(sheetId, 24), bg('#F4CCCC')),
-    custom(`=AND(ISNUMBER($U2),$U2>0,$U2<=${c.daysRed})`, colsFrom2(sheetId, 20), bg('#F4CCCC')),
-    custom(`=AND(ISNUMBER($U2),$U2>0,$U2<=${c.daysOrange})`, colsFrom2(sheetId, 20), bg('#FCE5CD')),
-    custom(`=$B2="Impressions"`, colsFrom2(sheetId, 1), bg('#EDE7F6')),
-    custom(`=AND(ISNUMBER($Z2),$Z2<${c.minMargin})`, colsFrom2(sheetId, 25), bg('#F4CCCC')),
-    custom(`=AND(ISNUMBER($AA2),$AA2<${c.minMargin})`, colsFrom2(sheetId, 26), bg('#F4CCCC')),
+    custom(`=AND($${L.start}2<>"",INT($${L.start}2)>=TODAY()-${c.newCampaignDays},INT($${L.start}2)<=TODAY())`, col('start'), bg('#CFE2F3')),
+    custom(`=AND($${L.end}2<>"",INT($${L.end}2)>=TODAY(),INT($${L.end}2)<=TODAY()+${c.endHighlightDays})`, col('end'), bg('#FFF2CC')),
+    custom(`=AND($${L.type}2="Clicks",ISNUMBER($${L.required}2),$${L.required}2<10)`, col('required'), bg('#00B050')),
+    custom(`=AND($${L.type}2="Clicks",ISNUMBER($${L.required}2),$${L.required}2<30)`, col('required'), bg('#C6EFCE')),
+    custom(`=AND(ISNUMBER($${L.ctr}2),OR($${L.ctr}2<${c.ctrLow},$${L.ctr}2>${c.ctrHigh}))`, col('ctr'), bg('#F4CCCC')),
+    red('margin'),
+    red('projMargin'),
+    custom(`=AND(ISNUMBER($${L.days}2),$${L.days}2>0,$${L.days}2<=${c.daysRed})`, col('days'), bg('#F4CCCC')),
+    custom(`=AND(ISNUMBER($${L.days}2),$${L.days}2>0,$${L.days}2<=${c.daysOrange})`, col('days'), bg('#FCE5CD')),
+    custom(`=$${L.type}2="Impressions"`, col('type'), bg('#EDE7F6')),
+    red('ioMargin'),
+    red('overallMargin'),
   ];
   return rules.map((rule, index) => ({ addConditionalFormatRule: { rule, index } }));
 }
 
 /** Calculated values for the Urgent / Margin Issue tabs (values, not formulas). */
 export function rowValues(r: PinstripeRow): (number | string | null)[] {
-  return [
-    r.name, r.type, r.start, r.end, r.totalTarget, r.targeted, r.achieved, r.required, r.clicks, r.impressions, r.ctr,
-    r.impressionsNeeded, r.impressionsTotal, r.mediaCost, r.fsFee, r.novaFee, r.budget, r.netProfit, r.margin,
-    r.health || null, r.daysLeft, r.comment || null, r.projectedMediaCost, r.projectedNetProfit, r.projectedMargin,
-    r.ioMargin, r.overallMargin,
-  ];
+  return pinstripeRowValues(r);
 }
 
 function valuesTab(sheetId: number, groups: readonly PinstripeGroupResult[], c: PinstripeConfig, spec: SheetSpec): object[] {

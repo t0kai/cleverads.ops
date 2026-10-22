@@ -34,8 +34,10 @@ export interface TimeOutRow {
   readonly isLatest: boolean;
   readonly start: number | null; // C
   readonly end: number | null; // D
-  readonly totalClicks: number | null; // E
-  readonly targetedClicks: number | null; // F
+  /** E: main IO = tracker target. A 2nd/3rd IO = what is left for it: main Total − every earlier IO's clicks. */
+  readonly totalClicks: number | null;
+  /** F: Total Clicks + buffer, on every IO that has a Total. */
+  readonly targetedClicks: number | null;
   readonly achievedClicks: number; // G
   readonly requiredClicks: number | null; // H
   readonly ctr: number | null; // I
@@ -139,20 +141,23 @@ export function calculateTimeOut(input: TimeOutInput, config: TimeOutConfig): Ti
     const groupRequired = groupTotal == null ? null : Math.max(groupTotal - groupAchieved, 0);
 
     const drafts: Draft[] = [];
+    let earlierClicks = 0; // clicks of the IOs above this one in the campaign
     g.members.forEach((m, i) => {
       const isChild = m.order > 1;
       const own = input.targets.get(normalizeKey(m.item.name)) ?? EMPTY_TARGET;
       // A 2nd/3rd IO starts on the main campaign's start date and ends with it, unless the tracker has its own end date.
       const start = parent.start;
       const end = isChild ? (own.end ?? parent.end) : parent.end;
-      const D = isChild ? null : parent.clicks;
+      // A 2nd/3rd IO shows what is left for it: main Total − every earlier IO's clicks (Oct 2026). Its Targeted adds the buffer.
+      const D = !isChild ? parent.clicks : groupTotal == null || i === 0 ? null : Math.max(groupTotal - earlierClicks, 0);
+      earlierClicks += m.item.clicks;
       const isLatest = i === g.members.length - 1;
 
       const F = m.item.clicks;
       const I = m.item.impressions;
       const L = m.item.cost;
 
-      const E = isChild ? null : groupTargeted;
+      const E = isChild ? (D == null ? null : sheetRound(D + D * config.clickBuffer, 0)) : groupTargeted;
       const G = isLatest ? groupRequired : null;
       const H = I === 0 ? null : F / I;
       const J = G == null || H == null || H === 0 ? null : sheetRound(G / H, 0);

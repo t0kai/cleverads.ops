@@ -19,6 +19,7 @@ export const timeOutModule: AdvertiserModule<TimeOutConfig, TimeOutResult> = {
 export { calculateTimeOut, ioMargin } from './rules';
 export { TIMEOUT_CAMPAIGN_TYPE, TIMEOUT_DEFAULTS, parseTimeOutConfig } from './config';
 export { groupTimeOutCampaigns, splitTimeOutName } from './names';
-export { TIMEOUT_DATA_COLUMNS, TIMEOUT_GROUP_KEY_COLUMN, TIMEOUT_HEADERS } from './sheet';
+export { TIMEOUT_COL, TIMEOUT_COLUMNS, TIMEOUT_DATA_COLUMNS, TIMEOUT_GROUP_KEY_COLUMN, TIMEOUT_HEADERS, TIMEOUT_LETTER, timeOutRowValues } from './sheet';
+export type { TimeOutColumn } from './sheet';
 export type { TimeOutConfig } from './config';
 export type { TimeOutGroupResult, TimeOutInput, TimeOutResult, TimeOutRow, TimeOutTarget } from './rules';

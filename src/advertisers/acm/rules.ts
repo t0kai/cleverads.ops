@@ -18,8 +18,10 @@ export interface AcmRow {
   readonly isLatest: boolean;
   readonly start: number | null; // B (serial)
   readonly end: number | null; // C (serial)
-  readonly totalClicks: number | null; // D
-  readonly targetedClicks: number | null; // E
+  /** D: main IO = tracker target. A 2nd/3rd IO = what is left for it: main Total − every earlier IO's clicks. */
+  readonly totalClicks: number | null;
+  /** E: Total Clicks + buffer, on every IO that has a Total. */
+  readonly targetedClicks: number | null;
   readonly achievedClicks: number; // F
   readonly requiredClicks: number | null; // G
   readonly ctr: number | null; // H
@@ -164,13 +166,16 @@ export function calculateAcm(input: ModuleInput, config: AcmConfig): AcmResult {
     const groupRequired = groupTotal == null ? null : Math.max(groupTotal - groupAchieved, 0);
 
     const partial: Omit<AcmRow, 'netProfit' | 'margin' | 'projectedNetProfit' | 'projectedMargin' | 'ioMargin' | 'overallMargin'>[] = [];
+    let earlierClicks = 0; // clicks of the IOs above this one in the campaign
     drafts.forEach((d) => {
       const F = d.row.clicks;
       const I = d.row.impressions;
       const L = d.row.cost;
-      const D = d.total;
+      // A 2nd/3rd IO shows what is left for it: main Total − every earlier IO's clicks (Oct 2026). Its Targeted adds the buffer.
+      const D = !d.isChild ? d.total : groupTotal == null || d.indexInGroup === 0 ? null : Math.max(groupTotal - earlierClicks, 0);
+      earlierClicks += F;
 
-      const E = d.isChild ? null : groupTargeted;
+      const E = d.isChild ? (D == null ? null : sheetRound(D + D * config.clickBuffer, 0)) : groupTargeted;
       const G = d.isLatest ? groupRequired : null;
       const H = I === 0 ? null : F / I;
       const J = G == null || H == null || H === 0 ? null : sheetRound(G / H, 0);

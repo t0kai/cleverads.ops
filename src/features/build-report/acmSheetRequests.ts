@@ -1,4 +1,4 @@
-import type { AcmConfig, AcmGroupResult, AcmResult, AcmRow } from '@/advertisers/acm';
+import { ACM_COL, ACM_COLUMNS, ACM_DATA_COLUMNS, ACM_LETTER, acmRowValues, type AcmColumn, type AcmConfig, type AcmGroupResult, type AcmResult, type AcmRow } from '@/advertisers/acm';
 import type { SheetCell, SheetSpec } from '@/advertisers/types';
 
 /**
@@ -13,12 +13,21 @@ export interface ReportSheetIds {
   readonly formula: number;
 }
 
-const LAST_DATA_COL = 25; // A–Y
-const GROUP_COL = 27; // AB (0-based)
-const UPDATED_COL = 26; // AA (0-based)
-const EXTRA_HEADERS = ['Projected Media Cost', 'Projected Net Profit', 'Projected Margin %', 'IO Margin %', 'Overall Margin %'];
-/** A new spreadsheet has 26 columns (A–Z); the Report writes up to AB, so it is widened first. */
-const GRID_COLUMNS = 30;
+const LAST_DATA_COL = ACM_DATA_COLUMNS; // A … Comment
+const GROUP_COL = ACM_COL.groupKey; // 0-based
+const UPDATED_COL = ACM_COL.updated; // 0-based
+/** A new spreadsheet has 26 columns (A–Z); the Report writes up to the group key, so it is widened first. */
+const GRID_COLUMNS = ACM_COLUMNS.length + 2;
+
+/**
+ * Where each column's header sits in the template's Formula tab (A–T), so a moved column keeps its header style.
+ * Columns the template does not have use its last header (T) as their style, as before.
+ */
+const TEMPLATE_HEADER_COL: Partial<Record<AcmColumn, number>> = {
+  name: 0, start: 1, end: 2, total: 3, targeted: 4, achieved: 5, required: 6, ctr: 7, impressions: 8, imprNeeded: 9,
+  imprTotal: 10, media: 11, fs: 12, nova: 13, budget: 14, netProfit: 15, margin: 16, health: 17, days: 18, comment: 19,
+};
+const TEMPLATE_LAST_HEADER = 19;
 
 type CellData = { userEnteredValue?: { numberValue?: number; stringValue?: string; formulaValue?: string } };
 
@@ -69,12 +78,13 @@ function numberFormats(sheetId: number, rowCount: number): object[] {
       fields: 'userEnteredFormat.numberFormat',
     },
   });
+  const one = (k: AcmColumn, type: string, pattern: string) => fmt(ACM_COL[k], ACM_COL[k] + 1, type, pattern);
   return [
-    fmt(1, 3, 'DATE', 'dd/MM/yyyy'), // B:C
-    fmt(7, 8, 'PERCENT', '0.00%'), // H
-    fmt(16, 17, 'PERCENT', '0.00%'), // Q
-    fmt(20, 22, 'NUMBER', '#,##0.00'), // U:V
-    fmt(22, 25, 'PERCENT', '0.00%'), // W:Y
+    fmt(ACM_COL.start, ACM_COL.end + 1, 'DATE', 'dd/MM/yyyy'),
+    one('ctr', 'PERCENT', '0.00%'),
+    fmt(ACM_COL.margin, ACM_COL.overallMargin + 1, 'PERCENT', '0.00%'), // the four margins, side by side
+    one('projMedia', 'NUMBER', '#,##0.00'),
+    one('projNet', 'NUMBER', '#,##0.00'),
   ];
 }
 
@@ -82,30 +92,28 @@ function numberFormats(sheetId: number, rowCount: number): object[] {
 export function conditionalRules(sheetId: number, c: AcmConfig): object[] {
   const custom = (formula: string, range: object, format: object) => ({ booleanRule: { condition: { type: 'CUSTOM_FORMULA', values: [{ userEnteredValue: formula }] }, format }, ranges: [range] });
   const bg = (hex: string) => ({ backgroundColor: rgb(hex) });
+  const L = ACM_LETTER;
+  const col = (k: AcmColumn) => colsFrom2(sheetId, ACM_COL[k]);
+  const red = (k: AcmColumn) => custom(`=AND(ISNUMBER($${L[k]}2),$${L[k]}2<${c.minMargin})`, col(k), bg('#F4CCCC'));
   const rules = [
-    custom(`=AND($B2<>"",INT($B2)>=TODAY()-${c.newCampaignDays},INT($B2)<=TODAY())`, colsFrom2(sheetId, 1), bg('#CFE2F3')),
-    custom(`=AND($C2<>"",INT($C2)>=TODAY(),INT($C2)<=TODAY()+${c.endHighlightDays})`, colsFrom2(sheetId, 2), bg('#FFF2CC')),
-    { booleanRule: { condition: { type: 'NUMBER_LESS', values: [{ userEnteredValue: '10' }] }, format: bg('#00B050') }, ranges: [colsFrom2(sheetId, 6)] },
-    { booleanRule: { condition: { type: 'NUMBER_LESS', values: [{ userEnteredValue: '30' }] }, format: bg('#C6EFCE') }, ranges: [colsFrom2(sheetId, 6)] },
-    custom(`=AND($H2<>"",OR($H2<${c.ctrLow},$H2>${c.ctrHigh}))`, colsFrom2(sheetId, 7), bg('#F4CCCC')),
-    custom(`=AND(ISNUMBER($Q2),$Q2<${c.minMargin})`, colsFrom2(sheetId, 16), bg('#F4CCCC')),
-    custom(`=AND(ISNUMBER($W2),$W2<${c.minMargin})`, colsFrom2(sheetId, 22), bg('#F4CCCC')),
-    custom(`=AND(ISNUMBER($S2),$S2>0,$S2<=${c.daysRed})`, colsFrom2(sheetId, 18), bg('#F4CCCC')),
-    custom(`=AND(ISNUMBER($S2),$S2>0,$S2<=${c.daysOrange})`, colsFrom2(sheetId, 18), bg('#FCE5CD')),
-    custom(`=AND(ISNUMBER($X2),$X2<${c.minMargin})`, colsFrom2(sheetId, 23), bg('#F4CCCC')),
-    custom(`=AND(ISNUMBER($Y2),$Y2<${c.minMargin})`, colsFrom2(sheetId, 24), bg('#F4CCCC')),
+    custom(`=AND($${L.start}2<>"",INT($${L.start}2)>=TODAY()-${c.newCampaignDays},INT($${L.start}2)<=TODAY())`, col('start'), bg('#CFE2F3')),
+    custom(`=AND($${L.end}2<>"",INT($${L.end}2)>=TODAY(),INT($${L.end}2)<=TODAY()+${c.endHighlightDays})`, col('end'), bg('#FFF2CC')),
+    { booleanRule: { condition: { type: 'NUMBER_LESS', values: [{ userEnteredValue: '10' }] }, format: bg('#00B050') }, ranges: [col('required')] },
+    { booleanRule: { condition: { type: 'NUMBER_LESS', values: [{ userEnteredValue: '30' }] }, format: bg('#C6EFCE') }, ranges: [col('required')] },
+    custom(`=AND($${L.ctr}2<>"",OR($${L.ctr}2<${c.ctrLow},$${L.ctr}2>${c.ctrHigh}))`, col('ctr'), bg('#F4CCCC')),
+    red('margin'),
+    red('projMargin'),
+    custom(`=AND(ISNUMBER($${L.days}2),$${L.days}2>0,$${L.days}2<=${c.daysRed})`, col('days'), bg('#F4CCCC')),
+    custom(`=AND(ISNUMBER($${L.days}2),$${L.days}2>0,$${L.days}2<=${c.daysOrange})`, col('days'), bg('#FCE5CD')),
+    red('ioMargin'),
+    red('overallMargin'),
   ];
   return rules.map((rule, index) => ({ addConditionalFormatRule: { rule, index } }));
 }
 
-/** Calculated values for the Urgent / Margin Issue tabs (the Apps Script copies values, not formulas). */
+/** Calculated values for the Urgent / Margin Issue tabs (the Apps Script copies values, not formulas), in the Report's column order. */
 export function rowValues(r: AcmRow): (number | string | null)[] {
-  return [
-    r.name, r.start, r.end, r.totalClicks, r.targetedClicks, r.achievedClicks, r.requiredClicks, r.ctr, r.impressions,
-    r.impressionsNeeded, r.impressionsTotal, r.mediaCost, r.fsFee, r.novaFee, r.budget, r.netProfit, r.margin,
-    r.health || null, r.daysLeft, r.comment || null, r.projectedMediaCost, r.projectedNetProfit, r.projectedMargin,
-    r.ioMargin, r.overallMargin,
-  ];
+  return acmRowValues(r);
 }
 
 function valuesTab(sheetId: number, reportId: number, groups: readonly AcmGroupResult[], c: AcmConfig, spec: SheetSpec): object[] {
@@ -151,25 +159,20 @@ export function buildReportRequests({ ids, spec, result, config, lastUpdated }: 
     { addSheet: { properties: { sheetId: ids.margin, title: 'Margin Issue', index: 2, gridProperties: frozen } } },
     { updateSheetProperties: { properties: { sheetId: ids.formula, title: 'Formula', index: 3 }, fields: 'title,index' } },
 
-    // Report header: A–T from the template, U–Y in the template's header style, AA/AB labels.
-    {
-      copyPaste: {
-        source: { sheetId: ids.formula, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 20 },
-        destination: { sheetId: ids.report, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 20 },
-        pasteType: 'PASTE_NORMAL',
-        pasteOrientation: 'NORMAL',
-      },
-    },
-    {
-      copyPaste: {
-        source: { sheetId: ids.formula, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 19, endColumnIndex: 20 },
-        destination: { sheetId: ids.report, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 20, endColumnIndex: 25 },
-        pasteType: 'PASTE_FORMAT',
-        pasteOrientation: 'NORMAL',
-      },
-    },
-    cells(ids.report, 0, 20, [EXTRA_HEADERS]),
-    // The template's G1 says "Required Clicks"; this report's copy gets "(without extra)" and a note. The template is untouched.
+    // Report header: each column takes the header style of the same column in the template (the order differs since
+    // Oct 2026), then the header text is written from the spec, with the hover notes. The template is untouched.
+    ...ACM_COLUMNS.slice(0, LAST_DATA_COL).map(([k], i) => {
+      const from = TEMPLATE_HEADER_COL[k] ?? TEMPLATE_LAST_HEADER;
+      return {
+        copyPaste: {
+          source: { sheetId: ids.formula, startRowIndex: 0, endRowIndex: 1, startColumnIndex: from, endColumnIndex: from + 1 },
+          destination: { sheetId: ids.report, startRowIndex: 0, endRowIndex: 1, startColumnIndex: i, endColumnIndex: i + 1 },
+          pasteType: 'PASTE_FORMAT',
+          pasteOrientation: 'NORMAL',
+        },
+      };
+    }),
+    cells(ids.report, 0, 0, [spec.headers.slice(0, LAST_DATA_COL)]),
     ...headerNotes(ids.report, spec),
     cells(ids.report, 0, UPDATED_COL, [['Last Updated:', 'Group Key']]),
 

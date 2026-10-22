@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { TIMEOUT_DEFAULTS, calculateTimeOut, timeOutModule } from '@/advertisers/timeout';
+import { TIMEOUT_DEFAULTS, TIMEOUT_HEADERS, calculateTimeOut, timeOutModule } from '@/advertisers/timeout';
 import { readDv360Csv } from '@/engine/csv/dv360';
 import { serialFromYmd } from '@/engine/dates/serial';
 import { ValidationError } from '@/shared/errors';
@@ -144,6 +144,14 @@ describe('every write fits inside the tabs', () => {
       const cell = r.updateCells.rows[0].values[0];
       expect(cell.userEnteredValue).toEqual({ stringValue: 'Required Clicks (without extra)' });
       expect(cell.note).toContain('Does not include the 10% extra');
+    }
+  });
+  it('explains the four margins in their header notes on every tab', () => {
+    const margins = (['Margin %', 'Projected Margin %', 'IO Margin %', 'Overall Margin %'] as const).map((h) => TIMEOUT_HEADERS.indexOf(h));
+    for (const sheetId of [0, 3001, 3002]) {
+      const notes = requests.filter((r) => r.updateCells?.start.sheetId === sheetId && r.updateCells.start.rowIndex === 0 && r.updateCells.fields === 'userEnteredValue,note');
+      expect(notes.map((r) => r.updateCells.start.columnIndex).sort((a: number, b: number) => a - b)).toEqual([7, ...margins]);
+      for (const r of notes.filter((n) => margins.includes(n.updateCells.start.columnIndex))) expect(r.updateCells.rows[0].values[0].note).toMatch(/^Shows: .*\nFormula: .*\nWhen to use: /s);
     }
   });
 });

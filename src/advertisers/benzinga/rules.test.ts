@@ -4,7 +4,7 @@ import { ValidationError } from '@/shared/errors';
 import { BENZINGA_DEFAULTS, parseBenzingaConfig } from './config';
 import { groupBenzingaCampaigns, monthlyBase, parseBuyingType, resolveTrackerKey, splitBenzingaName } from './names';
 import { NO_TRACKER_COMMENT, NO_VIEWS_COMMENT, calculateBenzinga, mergeTargets, type BenzingaTarget } from './rules';
-import { BENZINGA_GROUP_KEY_COLUMN, BENZINGA_HEADERS, buildBenzingaSheetSpec } from './sheet';
+import { BENZINGA_COL, BENZINGA_GROUP_KEY_COLUMN, BENZINGA_HEADERS, buildBenzingaSheetSpec } from './sheet';
 import { benzingaModule } from './index';
 
 // Made-up campaigns shaped like the real Benzinga export and tracker; numbers worked out by hand.
@@ -119,7 +119,8 @@ describe('calculateBenzinga', () => {
     expect(g?.rows.map((x) => x.name)).toEqual(['Harbour Display Campaign Regular IO 1', 'Harbour Display Campaign Regular IO 1 #2']);
     expect(main).toMatchObject({ type: 'CPM', totalTarget: 2_000_000, targeted: 2_200_000, achieved: 200000, required: null, budgetUsd: 5000, fx: 1.44, isLatest: false });
     expect(main?.budgetAud).toBeCloseTo(7200, 9);
-    expect(second).toMatchObject({ totalTarget: null, achieved: 300000, required: 1_500_000, impressionsNeeded: 1_500_000, impressionsTotal: 1_800_000, budgetUsd: null, isLatest: true });
+    // #2's own Total: 2,000,000 − 200,000 delivered by IO 1 = 1,800,000 (+10% = 1,980,000).
+    expect(second).toMatchObject({ totalTarget: 1_800_000, targeted: 1_980_000, achieved: 300000, required: 1_500_000, impressionsNeeded: 1_500_000, impressionsTotal: 1_800_000, budgetUsd: null, isLatest: true });
     expect(main?.novaFee).toBeCloseTo(160, 9); // spent
     expect(second?.novaFee).toBeCloseTo(1440, 9); // what it will have spent
     expect(main?.netProfitAud).toBeCloseTo(7200 - 250 - 250 * fs - 1600, 9);
@@ -174,42 +175,57 @@ describe('calculateBenzinga', () => {
 
   describe('Report tab', () => {
     const spec = buildBenzingaSheetSpec(r, BENZINGA_DEFAULTS);
-    const cell = (row: number, col: number) => spec.rows[row]?.[col]?.value;
+    const at = (row: number, k: keyof typeof BENZINGA_COL) => spec.rows[row]?.[BENZINGA_COL[k]]?.value;
     // Rows: 2 Harbour Loans · 3 Display IO 1 · 4 Display #2 · 5 River ETF Views · 6 Mystery Offer
 
-    it('has US$, rate and A$ columns, notes on three headers, and the group key hidden in AG', () => {
+    it('Health and days after the impressions, the four margins side by side, then costs, US$/A$ and Comment last', () => {
       expect(spec.headers).toBe(BENZINGA_HEADERS);
-      expect(spec.headers.slice(13, 22)).toEqual(['Inventory cost (AUD)', 'DV360/FS platform fee (AUD)', 'Nova fee (AUD)', 'Budget (USD)', 'USD → AUD rate', 'Budget (AUD)', 'Net profit (AUD)', 'Net profit (USD)', 'Margin %']);
+      expect(spec.headers.slice(12, 30)).toEqual([
+        'Required Total Impression', 'Campaign Health', 'Remaining Days', 'Margin %', 'Projected Margin %', 'IO Margin %', 'Overall Margin %',
+        'Inventory cost (AUD)', 'DV360/FS platform fee (AUD)', 'Nova fee (AUD)', 'Budget (USD)', 'USD → AUD rate', 'Budget (AUD)',
+        'Net profit (AUD)', 'Net profit (USD)', 'Projected Media Cost (AUD)', 'Projected Net Profit (AUD)', 'Comment',
+      ]);
       expect(spec.headers[7]).toBe('Required (without extra)');
       expect(spec.headers[BENZINGA_GROUP_KEY_COLUMN - 1]).toBe('Group Key');
       expect(spec.hiddenColumns).toEqual([33]);
-      expect(Object.keys(spec.headerNotes ?? {})).toEqual(['7', '14', '17']);
       expect(spec.rows.every((row) => row.length === BENZINGA_HEADERS.length)).toBe(true);
     });
 
-    it('CPC budget is a formula; CPM budget the tracker number; A$ = US$ × rate', () => {
-      expect(cell(0, 16)).toBe('=IF(E2="","",E2*0.35)');
-      expect(cell(0, 17)).toBe(1.5);
-      expect(cell(0, 18)).toBe('=IF(OR(Q2="",R2=""),"",Q2*R2)');
-      expect(cell(1, 16)).toBe(5000);
-      expect(cell(1, 17)).toBeCloseTo(1.44, 12);
-      expect(cell(2, 16)).toBeNull();
-      expect(cell(0, 20)).toBe('=IF(OR(T2="",R2="",R2=0),"",T2/R2)');
+    it('notes: Required, the fee, the rate, and what each margin shows', () => {
+      const notes = spec.headerNotes ?? {};
+      expect(Object.keys(notes).map(Number).sort((a, b) => a - b)).toEqual([7, 15, 16, 17, 18, 20, 23]);
+      expect(notes[BENZINGA_COL.ioMargin]).toContain('clicks × US$0.35 × USD → AUD rate');
+      expect(notes[BENZINGA_COL.projMargin]).toContain('projected media × 1.0409');
+      for (const k of ['margin', 'projMargin', 'ioMargin', 'overallMargin'] as const) expect(notes[BENZINGA_COL[k]]).toMatch(/^Shows: .*\nFormula: .*\nWhen to use: /s);
     });
 
-    it('still needed: Total − every IO, on the last IO only; Nova on the latest IO falls back to spend', () => {
-      expect(cell(1, 7)).toBeNull();
-      expect(cell(2, 7)).toBe('=IFERROR(IF(OR($B4="CPCV",$E$3=""),"",MAX($E$3-SUMIF($AG$2:$AG,$AG4,$G$2:$G),0)),"")');
-      expect(cell(2, 15)).toBe('=(IF(M4="",J4,M4)/1000)*0.8');
-      expect(cell(1, 15)).toBe('=(J3/1000)*0.8');
-      expect(cell(1, 6)).toBe('=IF($B3="CPM",J3,IF($B3="CPC",I3,""))');
+    it('CPC budget is a formula; CPM budget the tracker number; A$ = US$ × rate', () => {
+      expect(at(0, 'budgetUsd')).toBe('=IF(E2="","",E2*0.35)');
+      expect(at(0, 'fx')).toBe(1.5);
+      expect(at(0, 'budgetAud')).toBe('=IF(OR(W2="",X2=""),"",W2*X2)');
+      expect(at(1, 'budgetUsd')).toBe(5000);
+      expect(at(1, 'fx')).toBeCloseTo(1.44, 12);
+      expect(at(2, 'budgetUsd')).toBeNull();
+      expect(at(0, 'netUsd')).toBe('=IF(OR(Z2="",X2="",X2=0),"",Z2/X2)');
+      expect(at(0, 'margin')).toBe('=IF(Z2="","",Z2/Y2)');
+      expect(at(0, 'projMargin')).toBe('=IF(AC2="","",AC2/Y2)');
+    });
+
+    it("still needed: Total − every IO, on the last IO only; #2's own Total; Nova on the latest IO falls back to spend", () => {
+      expect(at(1, 'required')).toBeNull();
+      expect(at(2, 'required')).toBe('=IFERROR(IF(OR($B4="CPCV",$E$3=""),"",MAX($E$3-SUMIF($AG$2:$AG,$AG4,$G$2:$G),0)),"")');
+      expect(at(2, 'total')).toBe('=IF($E$3="","",MAX($E$3-SUM($G$3:G3),0))');
+      expect(at(2, 'targeted')).toBe('=IF(E4="","",ROUND(E4+(E4*10%),0))');
+      expect(at(2, 'nova')).toBe('=(IF(M4="",J4,M4)/1000)*0.8');
+      expect(at(1, 'nova')).toBe('=(J3/1000)*0.8');
+      expect(at(1, 'achieved')).toBe('=IF($B3="CPM",J3,IF($B3="CPC",I3,""))');
     });
 
     it('revenue: CPC in US$ × rate, CPM at the A$ rate per impression', () => {
-      expect(String(cell(0, 28))).toContain('I2*0.35*$R$2');
-      expect(String(cell(2, 28))).toContain('J4*$S$3/$E$3');
-      expect(cell(3, 22)).toBeNull(); // CPCV: no health
-      expect(cell(3, 24)).toBe(NO_VIEWS_COMMENT);
+      expect(String(at(0, 'ioMargin'))).toContain('I2*0.35*$X$2');
+      expect(String(at(2, 'ioMargin'))).toContain('J4*$Y$3/$E$3');
+      expect(at(3, 'health')).toBeNull(); // CPCV: no health
+      expect(at(3, 'comment')).toBe(NO_VIEWS_COMMENT);
     });
 
     it('every formula has balanced brackets and quotes', () => {

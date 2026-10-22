@@ -28,7 +28,8 @@ export const benzingaModule: AdvertiserModule<BenzingaConfig, BenzingaResult> = 
 export { calculateBenzinga, mergeTargets } from './rules';
 export { BENZINGA_DEFAULTS, parseBenzingaConfig } from './config';
 export { groupBenzingaCampaigns, parseBuyingType } from './names';
-export { BENZINGA_DATA_COLUMNS, BENZINGA_GROUP_KEY_COLUMN, BENZINGA_HEADERS } from './sheet';
+export { BENZINGA_COL, BENZINGA_COLUMNS, BENZINGA_DATA_COLUMNS, BENZINGA_GROUP_KEY_COLUMN, BENZINGA_HEADERS, BENZINGA_LETTER, benzingaRowValues } from './sheet';
+export type { BenzingaColumn } from './sheet';
 export type { BenzingaConfig } from './config';
 export type { BuyingType } from './names';
 export type { BenzingaGroupResult, BenzingaInput, BenzingaResult, BenzingaRow, BenzingaTarget, CampaignTarget } from './rules';

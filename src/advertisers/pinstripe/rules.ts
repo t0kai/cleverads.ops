@@ -38,8 +38,10 @@ export interface PinstripeRow {
   readonly isLatest: boolean;
   readonly start: number | null; // C
   readonly end: number | null; // D
-  readonly totalTarget: number | null; // E
-  readonly targeted: number | null; // F
+  /** E: main IO = tracker target. A 2nd/3rd IO = what is left for it: main Total − every earlier IO's delivery. */
+  readonly totalTarget: number | null;
+  /** F: Total + buffer, on every IO that has a Total. */
+  readonly targeted: number | null;
   readonly achieved: number; // G (clicks or impressions, by type)
   readonly required: number | null; // H
   readonly clicks: number; // I
@@ -157,13 +159,16 @@ export function calculatePinstripe(input: PinstripeInput, config: PinstripeConfi
     const groupRequired = groupTotal == null ? null : Math.max(groupTotal - groupAchieved, 0);
 
     const partial: Draft[] = [];
+    let earlierDelivery = 0; // clicks (or impressions) of the IOs above this one in the campaign
     g.members.forEach((m, i) => {
       const isChild = m.order > 1;
       const own = input.targets.get(normalizeKey(m.item.name)) ?? EMPTY_TARGET;
       // A 2nd/3rd IO starts on the main campaign's start date and ends with it, unless the tracker has its own end date.
       const start = parent.start;
       const end = isChild ? (own.end ?? parent.end) : parent.end;
-      const D = isChild ? null : parent.target;
+      // A 2nd/3rd IO shows what is left for it: main Total − every earlier IO's delivery (Oct 2026). Its Targeted adds the buffer.
+      const D = !isChild ? parent.target : groupTotal == null || i === 0 ? null : Math.max(groupTotal - earlierDelivery, 0);
+      earlierDelivery += achievedOf(m);
       const isLatest = i === g.members.length - 1;
 
       const clicks = m.item.clicks;
@@ -171,7 +176,7 @@ export function calculatePinstripe(input: PinstripeInput, config: PinstripeConfi
       const N = m.item.cost;
       const G = type === 'Impressions' ? impressions : clicks;
 
-      const F = isChild ? null : groupTargeted;
+      const F = isChild ? (D == null ? null : sheetRound(D + D * config.targetBuffer, 0)) : groupTargeted;
       const H = isLatest ? groupRequired : null;
       const K = impressions === 0 ? null : clicks / impressions;
       let L: number | null;

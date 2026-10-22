@@ -4,7 +4,7 @@ import { ValidationError } from '@/shared/errors';
 import { TIMEOUT_DEFAULTS, parseTimeOutConfig } from './config';
 import { groupTimeOutCampaigns, splitTimeOutName } from './names';
 import { calculateTimeOut, ioMargin, type TimeOutTarget } from './rules';
-import { TIMEOUT_GROUP_KEY_COLUMN, TIMEOUT_HEADERS, buildTimeOutSheetSpec } from './sheet';
+import { TIMEOUT_COL, TIMEOUT_GROUP_KEY_COLUMN, TIMEOUT_HEADERS, buildTimeOutSheetSpec } from './sheet';
 
 // Made-up campaigns shaped like the real Time Out export; numbers worked out by hand.
 const day = (d: number) => serialFromYmd(2026, 10, d);
@@ -53,8 +53,9 @@ describe('calculateTimeOut', () => {
     expect(r.groups).toHaveLength(1);
     const [main, second, third] = r.rows;
     expect(main).toMatchObject({ campaignType: 'CPC', totalClicks: 3000, targetedClicks: 3300, requiredClicks: null, budget: 900, isLatest: false });
-    expect(second).toMatchObject({ isChild: true, targetedClicks: null, requiredClicks: null, budget: null, isLatest: false });
-    expect(third).toMatchObject({ isChild: true, targetedClicks: null, requiredClicks: 3000 - 136 - 124 - 21, isLatest: true }); // Total − all IOs, no buffer
+    // Each follow-on IO shows what is left for it (main Total − earlier IOs' clicks) and that + 10%; one budget, on the main.
+    expect(second).toMatchObject({ isChild: true, totalClicks: 3000 - 136, targetedClicks: 3150, requiredClicks: null, budget: null, isLatest: false });
+    expect(third).toMatchObject({ isChild: true, totalClicks: 3000 - 136 - 124, targetedClicks: 3014, requiredClicks: 3000 - 136 - 124 - 21, budget: null, isLatest: true }); // Total − all IOs, no buffer
     // Campaign health on every IO: 281 of 3,000 clicks on day 11 of 30, 2,719 still needed over 19 days.
     expect(r.rows.map((x) => x.health)).toEqual(['🔴 Critical | 143/day', '🔴 Critical | 143/day', '🔴 Critical | 143/day']);
   });
@@ -94,6 +95,8 @@ describe('calculateTimeOut', () => {
     );
     expect(three.rows.map((x) => x.requiredClicks)).toEqual([null, null, 2534]); // 3,000 − (208 + 184 + 74)
     expect(three.rows[0]?.targetedClicks).toBe(3300); // Targeted still shows the 10% buffer, on the main IO
+    // Each IO's own Total: 3,000; 3,000 − 208 = 2,792; 2,792 − 184 = 2,608. Targeted = that + 10%.
+    expect(three.rows.map((x) => [x.totalClicks, x.targetedClicks])).toEqual([[3000, 3300], [2792, 3071], [2608, 2869]]);
   });
 
   it('warns when the tracker has no target, and comments a lone 2nd IO', () => {
@@ -118,33 +121,44 @@ describe('Time Out Report tab', () => {
   const spec = buildTimeOutSheetSpec(r, TIMEOUT_DEFAULTS);
   const cell = (row: number, col: number) => spec.rows[row]?.[col]?.value;
 
-  it('has Campaign Type, IO and overall margin columns, group key hidden in AC', () => {
+  it('has Campaign Type, Health and days after the impressions, the four margins side by side, Comment last', () => {
     expect(spec.headers[1]).toBe('Campaign Type');
     expect(spec.headers).not.toContain('Required Clicks / Day');
-    expect(spec.headers[7]).toBe('Required Clicks (without extra)');
-    expect(spec.headerNotes?.[7]).toContain('Total Clicks − every IO');
-    expect(spec.headers[24]).toBe('IO Margin %');
-    expect(spec.headers[25]).toBe('Overall Margin %');
+    expect(spec.headers.slice(11, 26)).toEqual([
+      'Required Total Impression', 'Campaign Health', 'Remaining Days', 'Margin %', 'Projected Margin %', 'IO Margin %', 'Overall Margin %',
+      'Inventory cost', 'FS Service fee', 'Nova fee', 'Budget', 'Net profit', 'Projected Media Cost', 'Projected Net Profit', 'Comment',
+    ]);
     expect(spec.headers[TIMEOUT_GROUP_KEY_COLUMN - 1]).toBe('Group Key');
     expect(spec.hiddenColumns).toEqual([TIMEOUT_GROUP_KEY_COLUMN]);
     expect(spec.rows.every((row) => row.length === TIMEOUT_HEADERS.length)).toBe(true);
     expect(spec.rows.every((row) => row[1]?.value === 'CPC')).toBe(true);
+    // Notes: Required, and what each of the four margins shows, its formula and when to use it.
+    expect(Object.keys(spec.headerNotes ?? {}).map(Number)).toEqual([7, 14, 15, 16, 17]);
+    expect(spec.headerNotes?.[TIMEOUT_COL.ioMargin]).toContain('clicks × A$0.30');
+    expect(spec.headerNotes?.[TIMEOUT_COL.projMargin]).toContain('When to use: the main number for decisions.');
   });
 
   it('uses Time Out rates in the formulas', () => {
-    expect(cell(0, 15)).toBe('=IF(E2="","",E2*0.3)');
-    expect(cell(1, 24)).toBe('=IFERROR((G3*0.3-M3*(1+0.15)-(J3/1000)*0.8)/(G3*0.3),"")');
-    expect(String(cell(0, 25))).toContain('SUMIF($AC$2:$AC,$AC2,$G$2:$G)*0.3');
-    expect(cell(1, 25)).toBeNull();
-    expect(String(cell(0, 16))).toContain('SUMIF($AC$2:$AC,$AC2,$M$2:$M)');
-    expect(cell(0, 14)).toBe('=IF(J2="","",(J2/1000)*0.8)'); // main is not the latest IO: Nova on spend
-    expect(cell(0, 21)).toBe('=M2');
-    expect(cell(0, 5)).toBe('=IF(E2="","",ROUND(E2+(E2*10%),0))'); // Targeted on the main IO
-    expect(cell(1, 5)).toBeNull();
-    expect(cell(0, 7)).toBeNull(); // Required only on the last IO
-    expect(cell(1, 7)).toBe('=IFERROR(IF($E$2="","",MAX($E$2-SUMIF($AC$2:$AC,$AC3,$G$2:$G),0)),"")'); // Total − all IOs
-    expect(String(cell(0, 18))).toContain('SUMIF($AC$2:$AC,$AC2,$G$2:$G)>=$E$2'); // campaign health on every IO, against Total
-    expect(cell(2, 7)).toBe('=IFERROR(IF($E$4="","",MAX($E$4-SUMIF($AC$2:$AC,$AC4,$G$2:$G),0)),"")'); // single IO: its own row
+    const at = (row: number, k: keyof typeof TIMEOUT_COL) => cell(row, TIMEOUT_COL[k]);
+    expect(at(0, 'budget')).toBe('=IF(E2="","",E2*0.3)'); // budget on the main only
+    expect(at(1, 'budget')).toBeNull();
+    expect(at(1, 'ioMargin')).toBe('=IFERROR((G3*0.3-S3*(1+0.15)-(J3/1000)*0.8)/(G3*0.3),"")'); // media is in S
+    expect(String(at(0, 'overallMargin'))).toContain('SUMIF($AC$2:$AC,$AC2,$G$2:$G)*0.3');
+    expect(at(1, 'overallMargin')).toBeNull();
+    expect(String(at(0, 'netProfit'))).toContain('SUMIF($AC$2:$AC,$AC2,$S$2:$S)');
+    expect(at(0, 'nova')).toBe('=IF(J2="","",(J2/1000)*0.8)'); // main is not the latest IO: Nova on spend
+    expect(at(0, 'projMedia')).toBe('=S2');
+    expect(at(0, 'margin')).toBe('=IF(W2="","",W2/V2)');
+    expect(at(0, 'projMargin')).toBe('=IF(Y2="","",Y2/V2)');
+    expect(at(0, 'targeted')).toBe('=IF(E2="","",ROUND(E2+(E2*10%),0))');
+    // The 2nd IO's own Total (main Total − main's clicks) and Targeted (+10%).
+    expect(at(1, 'total')).toBe('=IF($E$2="","",MAX($E$2-SUM($G$2:G2),0))');
+    expect(at(1, 'targeted')).toBe('=IF(E3="","",ROUND(E3+(E3*10%),0))');
+    expect(at(0, 'required')).toBeNull(); // Required only on the last IO
+    expect(at(1, 'required')).toBe('=IFERROR(IF($E$2="","",MAX($E$2-SUMIF($AC$2:$AC,$AC3,$G$2:$G),0)),"")');
+    expect(String(at(0, 'health'))).toContain('SUMIF($AC$2:$AC,$AC2,$G$2:$G)>=$E$2'); // campaign health on every IO
+    expect(at(2, 'required')).toBe('=IFERROR(IF($E$4="","",MAX($E$4-SUMIF($AC$2:$AC,$AC4,$G$2:$G),0)),"")'); // single IO: its own row
+    expect(at(2, 'total')).toBe(6900);
   });
 
   it('every formula has balanced brackets and quotes', () => {

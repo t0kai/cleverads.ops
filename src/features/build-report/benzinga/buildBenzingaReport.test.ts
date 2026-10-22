@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { BENZINGA_DEFAULTS, benzingaModule, calculateBenzinga } from '@/advertisers/benzinga';
+import { BENZINGA_COL, BENZINGA_DEFAULTS, benzingaModule, calculateBenzinga } from '@/advertisers/benzinga';
 import { serialFromYmd } from '@/engine/dates/serial';
 import { ValidationError } from '@/shared/errors';
 import { loadRunner } from '../runners';
@@ -126,9 +126,9 @@ describe('buildBenzingaReport against a fake Google', () => {
     expect(titles).toEqual(['Report', 'Urgent', 'Margin Issue', 'Settings']);
     const data = batch.requests.find((r) => r.updateCells?.start.sheetId === 0 && r.updateCells.start.rowIndex === 1 && r.updateCells.start.columnIndex === 0);
     expect(data?.updateCells.rows).toHaveLength(3);
-    expect(data?.updateCells.rows[1].values[1].userEnteredValue.stringValue).toBe('CPM');
-    expect(data?.updateCells.rows[1].values[4].userEnteredValue.numberValue).toBe(2_000_000); // both month rows
-    expect(data?.updateCells.rows[1].values[16].userEnteredValue.numberValue).toBe(5000);
+    expect(data?.updateCells.rows[1].values[BENZINGA_COL.type].userEnteredValue.stringValue).toBe('CPM');
+    expect(data?.updateCells.rows[1].values[BENZINGA_COL.total].userEnteredValue.numberValue).toBe(2_000_000); // both month rows
+    expect(data?.updateCells.rows[1].values[BENZINGA_COL.budgetUsd].userEnteredValue.numberValue).toBe(5000);
   });
 
   it('names the tracker when there is no access to it', async () => {
@@ -206,11 +206,13 @@ describe('every write fits inside the tabs', () => {
   it('never writes outside a tab', () => {
     expect(checkGrid(requests)).toEqual([]);
   });
-  it('labels Required "(without extra)", the fee and the rate with hover notes on every tab', () => {
+  it('labels Required "(without extra)", the fee, the rate and the four margins with hover notes on every tab', () => {
     const notes = requests.filter((r) => r.updateCells?.start.rowIndex === 0 && r.updateCells.fields === 'userEnteredValue,note');
-    expect(notes.map((r) => `${r.updateCells.start.sheetId}:${r.updateCells.start.columnIndex}`).sort()).toEqual(
-      ['0:14', '0:17', '0:7', '4001:14', '4001:17', '4001:7', '4002:14', '4002:17', '4002:7'],
-    );
+    const cols = ['required', 'margin', 'projMargin', 'ioMargin', 'overallMargin', 'fs', 'fx'] as const;
+    for (const sheetId of [0, 4001, 4002]) {
+      const here = notes.filter((r) => r.updateCells.start.sheetId === sheetId).map((r) => r.updateCells.start.columnIndex);
+      expect(here.sort((a: number, b: number) => a - b)).toEqual(cols.map((k) => BENZINGA_COL[k]).sort((a, b) => a - b));
+    }
     const required = notes.find((r) => r.updateCells.start.sheetId === 0 && r.updateCells.start.columnIndex === 7)?.updateCells.rows[0].values[0];
     expect(required.userEnteredValue).toEqual({ stringValue: 'Required (without extra)' });
     expect(required.note).toContain('Does not include the 10% extra');

@@ -27,6 +27,7 @@ export const pinstripeModule: AdvertiserModule<PinstripeConfig, PinstripeResult>
 
 export { calculatePinstripe } from './rules';
 export { PINSTRIPE_DEFAULTS, parsePinstripeConfig } from './config';
-export { PINSTRIPE_DATA_COLUMNS, PINSTRIPE_GROUP_KEY_COLUMN, PINSTRIPE_HEADERS } from './sheet';
+export { PINSTRIPE_COL, PINSTRIPE_COLUMNS, PINSTRIPE_DATA_COLUMNS, PINSTRIPE_GROUP_KEY_COLUMN, PINSTRIPE_HEADERS, PINSTRIPE_LETTER, pinstripeRowValues } from './sheet';
+export type { PinstripeColumn } from './sheet';
 export type { PinstripeConfig } from './config';
 export type { CampaignType, PinstripeGroupResult, PinstripeInput, PinstripeResult, PinstripeRow, PinstripeTarget } from './rules';

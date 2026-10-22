@@ -1,4 +1,7 @@
-import { BENZINGA_DATA_COLUMNS, BENZINGA_GROUP_KEY_COLUMN, BENZINGA_HEADERS, type BenzingaConfig, type BenzingaGroupResult, type BenzingaResult, type BenzingaRow } from '@/advertisers/benzinga';
+import {
+  BENZINGA_COL, BENZINGA_DATA_COLUMNS, BENZINGA_GROUP_KEY_COLUMN, BENZINGA_HEADERS, BENZINGA_LETTER, benzingaRowValues,
+  type BenzingaColumn, type BenzingaConfig, type BenzingaGroupResult, type BenzingaResult, type BenzingaRow,
+} from '@/advertisers/benzinga';
 import type { SheetCell, SheetSpec } from '@/advertisers/types';
 
 /**
@@ -13,8 +16,8 @@ export interface BenzingaSheetIds {
   readonly settings: number;
 }
 
-const LAST_DATA_COL = BENZINGA_DATA_COLUMNS; // A–AD
-const UPDATED_COL = 31; // AF (0-based)
+const LAST_DATA_COL = BENZINGA_DATA_COLUMNS; // A … Comment
+const UPDATED_COL = BENZINGA_COL.updated; // 0-based
 const GROUP_COL = BENZINGA_GROUP_KEY_COLUMN - 1; // AG (0-based)
 /** A new spreadsheet has only 26 columns (A–Z); Benzinga writes up to AG, so every tab is widened first. */
 export const GRID_COLUMNS = BENZINGA_HEADERS.length + 2;
@@ -99,17 +102,17 @@ function numberFormats(sheetId: number, rowCount: number): object[] {
       fields: 'userEnteredFormat.numberFormat',
     },
   });
+  const C = BENZINGA_COL;
   return [
-    fmt(2, 4, 'DATE', 'dd/MM/yyyy'), // C:D
-    fmt(4, 10, 'NUMBER', '#,##0'), // E:J
-    fmt(10, 11, 'PERCENT', '0.00%'), // K
-    fmt(11, 13, 'NUMBER', '#,##0'), // L:M
-    fmt(13, 17, 'NUMBER', '#,##0.00'), // N:Q
-    fmt(17, 18, 'NUMBER', '0.0000'), // R
-    fmt(18, 21, 'NUMBER', '#,##0.00'), // S:U
-    fmt(21, 22, 'PERCENT', '0.00%'), // V
-    fmt(25, 27, 'NUMBER', '#,##0.00'), // Z:AA
-    fmt(27, 30, 'PERCENT', '0.00%'), // AB:AD
+    fmt(C.start, C.end + 1, 'DATE', 'dd/MM/yyyy'),
+    fmt(C.total, C.impressions + 1, 'NUMBER', '#,##0'),
+    fmt(C.ctr, C.ctr + 1, 'PERCENT', '0.00%'),
+    fmt(C.imprNeeded, C.imprTotal + 1, 'NUMBER', '#,##0'),
+    fmt(C.margin, C.overallMargin + 1, 'PERCENT', '0.00%'), // the four margins, side by side
+    fmt(C.media, C.budgetUsd + 1, 'NUMBER', '#,##0.00'),
+    fmt(C.fx, C.fx + 1, 'NUMBER', '0.0000'),
+    fmt(C.budgetAud, C.netUsd + 1, 'NUMBER', '#,##0.00'),
+    fmt(C.projMedia, C.projNet + 1, 'NUMBER', '#,##0.00'),
   ];
 }
 
@@ -117,32 +120,30 @@ function numberFormats(sheetId: number, rowCount: number): object[] {
 export function conditionalRules(sheetId: number, c: BenzingaConfig): object[] {
   const custom = (formula: string, range: object, format: object) => ({ booleanRule: { condition: { type: 'CUSTOM_FORMULA', values: [{ userEnteredValue: formula }] }, format }, ranges: [range] });
   const bg = (hex: string) => ({ backgroundColor: rgb(hex) });
+  const L = BENZINGA_LETTER;
+  const col = (k: BenzingaColumn) => colsFrom2(sheetId, BENZINGA_COL[k]);
+  const red = (k: BenzingaColumn) => custom(`=AND(ISNUMBER($${L[k]}2),$${L[k]}2<${c.minMargin})`, col(k), bg('#F4CCCC'));
   const rules = [
-    custom(`=AND($C2<>"",INT($C2)>=TODAY()-${c.newCampaignDays},INT($C2)<=TODAY())`, colsFrom2(sheetId, 2), bg('#CFE2F3')),
-    custom(`=AND($D2<>"",INT($D2)>=TODAY(),INT($D2)<=TODAY()+${c.endHighlightDays})`, colsFrom2(sheetId, 3), bg('#FFF2CC')),
-    custom(`=AND($B2="CPC",ISNUMBER($H2),$H2<10)`, colsFrom2(sheetId, 7), bg('#00B050')),
-    custom(`=AND($B2="CPC",ISNUMBER($H2),$H2<30)`, colsFrom2(sheetId, 7), bg('#C6EFCE')),
-    custom(`=AND(ISNUMBER($K2),OR($K2<${c.ctrLow},$K2>${c.ctrHigh}))`, colsFrom2(sheetId, 10), bg('#F4CCCC')),
-    custom(`=AND(ISNUMBER($V2),$V2<${c.minMargin})`, colsFrom2(sheetId, 21), bg('#F4CCCC')),
-    custom(`=AND(ISNUMBER($AB2),$AB2<${c.minMargin})`, colsFrom2(sheetId, 27), bg('#F4CCCC')),
-    custom(`=AND(ISNUMBER($X2),$X2>0,$X2<=${c.daysRed})`, colsFrom2(sheetId, 23), bg('#F4CCCC')),
-    custom(`=AND(ISNUMBER($X2),$X2>0,$X2<=${c.daysOrange})`, colsFrom2(sheetId, 23), bg('#FCE5CD')),
-    custom(`=$B2="CPM"`, colsFrom2(sheetId, 1), bg('#EDE7F6')),
-    custom(`=$B2="CPCV"`, colsFrom2(sheetId, 1), bg('#FFF2CC')),
-    custom(`=AND(ISNUMBER($AC2),$AC2<${c.minMargin})`, colsFrom2(sheetId, 28), bg('#F4CCCC')),
-    custom(`=AND(ISNUMBER($AD2),$AD2<${c.minMargin})`, colsFrom2(sheetId, 29), bg('#F4CCCC')),
+    custom(`=AND($${L.start}2<>"",INT($${L.start}2)>=TODAY()-${c.newCampaignDays},INT($${L.start}2)<=TODAY())`, col('start'), bg('#CFE2F3')),
+    custom(`=AND($${L.end}2<>"",INT($${L.end}2)>=TODAY(),INT($${L.end}2)<=TODAY()+${c.endHighlightDays})`, col('end'), bg('#FFF2CC')),
+    custom(`=AND($${L.type}2="CPC",ISNUMBER($${L.required}2),$${L.required}2<10)`, col('required'), bg('#00B050')),
+    custom(`=AND($${L.type}2="CPC",ISNUMBER($${L.required}2),$${L.required}2<30)`, col('required'), bg('#C6EFCE')),
+    custom(`=AND(ISNUMBER($${L.ctr}2),OR($${L.ctr}2<${c.ctrLow},$${L.ctr}2>${c.ctrHigh}))`, col('ctr'), bg('#F4CCCC')),
+    red('margin'),
+    red('projMargin'),
+    custom(`=AND(ISNUMBER($${L.days}2),$${L.days}2>0,$${L.days}2<=${c.daysRed})`, col('days'), bg('#F4CCCC')),
+    custom(`=AND(ISNUMBER($${L.days}2),$${L.days}2>0,$${L.days}2<=${c.daysOrange})`, col('days'), bg('#FCE5CD')),
+    custom(`=$${L.type}2="CPM"`, col('type'), bg('#EDE7F6')),
+    custom(`=$${L.type}2="CPCV"`, col('type'), bg('#FFF2CC')),
+    red('ioMargin'),
+    red('overallMargin'),
   ];
   return rules.map((rule, index) => ({ addConditionalFormatRule: { rule, index } }));
 }
 
 /** Calculated values for the Urgent / Margin Issue tabs (values, not formulas). */
 export function rowValues(r: BenzingaRow): (number | string | null)[] {
-  return [
-    r.name, r.type, r.start, r.end, r.totalTarget, r.targeted, r.achieved, r.required, r.clicks, r.impressions, r.ctr,
-    r.impressionsNeeded, r.impressionsTotal, r.mediaCost, r.fsFee, r.novaFee, r.budgetUsd, r.fx, r.budgetAud,
-    r.netProfitAud, r.netProfitUsd, r.margin, r.health || null, r.daysLeft, r.comment || null, r.projectedMediaCost,
-    r.projectedNetProfit, r.projectedMargin, r.ioMargin, r.overallMargin,
-  ];
+  return benzingaRowValues(r);
 }
 
 function valuesTab(sheetId: number, groups: readonly BenzingaGroupResult[], c: BenzingaConfig, spec: SheetSpec): object[] {

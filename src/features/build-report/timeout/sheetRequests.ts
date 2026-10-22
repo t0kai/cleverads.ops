@@ -1,4 +1,7 @@
-import { TIMEOUT_CAMPAIGN_TYPE, TIMEOUT_DATA_COLUMNS, TIMEOUT_GROUP_KEY_COLUMN, TIMEOUT_HEADERS, type TimeOutConfig, type TimeOutGroupResult, type TimeOutResult, type TimeOutRow } from '@/advertisers/timeout';
+import {
+  TIMEOUT_CAMPAIGN_TYPE, TIMEOUT_COL, TIMEOUT_DATA_COLUMNS, TIMEOUT_GROUP_KEY_COLUMN, TIMEOUT_HEADERS, TIMEOUT_LETTER, timeOutRowValues,
+  type TimeOutColumn, type TimeOutConfig, type TimeOutGroupResult, type TimeOutResult, type TimeOutRow,
+} from '@/advertisers/timeout';
 import type { SheetCell, SheetSpec } from '@/advertisers/types';
 
 /**
@@ -13,8 +16,8 @@ export interface TimeOutSheetIds {
   readonly settings: number;
 }
 
-const LAST_DATA_COL = TIMEOUT_DATA_COLUMNS; // A–Z
-const UPDATED_COL = 27; // AB (0-based)
+const LAST_DATA_COL = TIMEOUT_DATA_COLUMNS; // A … Comment
+const UPDATED_COL = TIMEOUT_COL.updated; // 0-based
 const GROUP_COL = TIMEOUT_GROUP_KEY_COLUMN - 1; // AC (0-based)
 /** A new spreadsheet has only 26 columns (A–Z); the report writes up to AC, so every tab is widened first. */
 export const GRID_COLUMNS = TIMEOUT_HEADERS.length + 2;
@@ -80,15 +83,15 @@ function numberFormats(sheetId: number, rowCount: number): object[] {
       fields: 'userEnteredFormat.numberFormat',
     },
   });
+  const C = TIMEOUT_COL;
   return [
-    fmt(2, 4, 'DATE', 'dd/MM/yyyy'), // C:D
-    fmt(4, 8, 'NUMBER', '#,##0'), // E:H
-    fmt(8, 9, 'PERCENT', '0.00%'), // I
-    fmt(9, 12, 'NUMBER', '#,##0'), // J:L
-    fmt(12, 17, 'NUMBER', '#,##0.00'), // M:Q
-    fmt(17, 18, 'PERCENT', '0.00%'), // R
-    fmt(21, 23, 'NUMBER', '#,##0.00'), // V:W
-    fmt(23, 26, 'PERCENT', '0.00%'), // X:Z
+    fmt(C.start, C.end + 1, 'DATE', 'dd/MM/yyyy'),
+    fmt(C.total, C.required + 1, 'NUMBER', '#,##0'),
+    fmt(C.ctr, C.ctr + 1, 'PERCENT', '0.00%'),
+    fmt(C.impressions, C.imprTotal + 1, 'NUMBER', '#,##0'),
+    fmt(C.margin, C.overallMargin + 1, 'PERCENT', '0.00%'), // the four margins, side by side
+    fmt(C.media, C.netProfit + 1, 'NUMBER', '#,##0.00'),
+    fmt(C.projMedia, C.projNet + 1, 'NUMBER', '#,##0.00'),
   ];
 }
 
@@ -96,30 +99,28 @@ function numberFormats(sheetId: number, rowCount: number): object[] {
 export function conditionalRules(sheetId: number, c: TimeOutConfig): object[] {
   const custom = (formula: string, range: object, format: object) => ({ booleanRule: { condition: { type: 'CUSTOM_FORMULA', values: [{ userEnteredValue: formula }] }, format }, ranges: [range] });
   const bg = (hex: string) => ({ backgroundColor: rgb(hex) });
+  const L = TIMEOUT_LETTER;
+  const col = (k: TimeOutColumn) => colsFrom2(sheetId, TIMEOUT_COL[k]);
+  const red = (k: TimeOutColumn) => custom(`=AND(ISNUMBER($${L[k]}2),$${L[k]}2<${c.minMargin})`, col(k), bg('#F4CCCC'));
   const rules = [
-    custom(`=AND($C2<>"",INT($C2)>=TODAY()-${c.newCampaignDays},INT($C2)<=TODAY())`, colsFrom2(sheetId, 2), bg('#CFE2F3')),
-    custom(`=AND($D2<>"",INT($D2)>=TODAY(),INT($D2)<=TODAY()+${c.endHighlightDays})`, colsFrom2(sheetId, 3), bg('#FFF2CC')),
-    custom('=AND(ISNUMBER($H2),$H2<10)', colsFrom2(sheetId, 7), bg('#00B050')),
-    custom('=AND(ISNUMBER($H2),$H2<30)', colsFrom2(sheetId, 7), bg('#C6EFCE')),
-    custom(`=AND(ISNUMBER($I2),OR($I2<${c.ctrLow},$I2>${c.ctrHigh}))`, colsFrom2(sheetId, 8), bg('#F4CCCC')),
-    custom(`=AND(ISNUMBER($R2),$R2<${c.minMargin})`, colsFrom2(sheetId, 17), bg('#F4CCCC')),
-    custom(`=AND(ISNUMBER($X2),$X2<${c.minMargin})`, colsFrom2(sheetId, 23), bg('#F4CCCC')),
-    custom(`=AND(ISNUMBER($T2),$T2>0,$T2<=${c.daysRed})`, colsFrom2(sheetId, 19), bg('#F4CCCC')),
-    custom(`=AND(ISNUMBER($T2),$T2>0,$T2<=${c.daysOrange})`, colsFrom2(sheetId, 19), bg('#FCE5CD')),
-    custom(`=AND(ISNUMBER($Y2),$Y2<${c.minMargin})`, colsFrom2(sheetId, 24), bg('#F4CCCC')),
-    custom(`=AND(ISNUMBER($Z2),$Z2<${c.minMargin})`, colsFrom2(sheetId, 25), bg('#F4CCCC')),
+    custom(`=AND($${L.start}2<>"",INT($${L.start}2)>=TODAY()-${c.newCampaignDays},INT($${L.start}2)<=TODAY())`, col('start'), bg('#CFE2F3')),
+    custom(`=AND($${L.end}2<>"",INT($${L.end}2)>=TODAY(),INT($${L.end}2)<=TODAY()+${c.endHighlightDays})`, col('end'), bg('#FFF2CC')),
+    custom(`=AND(ISNUMBER($${L.required}2),$${L.required}2<10)`, col('required'), bg('#00B050')),
+    custom(`=AND(ISNUMBER($${L.required}2),$${L.required}2<30)`, col('required'), bg('#C6EFCE')),
+    custom(`=AND(ISNUMBER($${L.ctr}2),OR($${L.ctr}2<${c.ctrLow},$${L.ctr}2>${c.ctrHigh}))`, col('ctr'), bg('#F4CCCC')),
+    red('margin'),
+    red('projMargin'),
+    custom(`=AND(ISNUMBER($${L.days}2),$${L.days}2>0,$${L.days}2<=${c.daysRed})`, col('days'), bg('#F4CCCC')),
+    custom(`=AND(ISNUMBER($${L.days}2),$${L.days}2>0,$${L.days}2<=${c.daysOrange})`, col('days'), bg('#FCE5CD')),
+    red('ioMargin'),
+    red('overallMargin'),
   ];
   return rules.map((rule, index) => ({ addConditionalFormatRule: { rule, index } }));
 }
 
 /** Calculated values for the Urgent / Margin Issue tabs (values, not formulas). */
 export function rowValues(r: TimeOutRow): (number | string | null)[] {
-  return [
-    r.name, r.campaignType, r.start, r.end, r.totalClicks, r.targetedClicks, r.achievedClicks, r.requiredClicks,
-    r.ctr, r.impressions, r.impressionsNeeded, r.impressionsTotal, r.mediaCost, r.fsFee, r.novaFee, r.budget, r.netProfit,
-    r.margin, r.health || null, r.daysLeft, r.comment || null, r.projectedMediaCost, r.projectedNetProfit, r.projectedMargin,
-    r.ioMargin, r.overallMargin,
-  ];
+  return timeOutRowValues(r);
 }
 
 function valuesTab(sheetId: number, groups: readonly TimeOutGroupResult[], c: TimeOutConfig, spec: SheetSpec): object[] {

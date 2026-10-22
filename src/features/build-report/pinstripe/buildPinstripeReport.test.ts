@@ -4,7 +4,7 @@ import { serialFromYmd } from '@/engine/dates/serial';
 import { ValidationError } from '@/shared/errors';
 import { buildPinstripeReport } from './buildPinstripeReport';
 import { buildPinstripeRequests, settingsRows } from './sheetRequests';
-import { calculatePinstripe, pinstripeModule } from '@/advertisers/pinstripe';
+import { PINSTRIPE_COL, calculatePinstripe, pinstripeModule } from '@/advertisers/pinstripe';
 import { findPinstripeColumns, parsePinstripeTargets } from './trackerTargets';
 
 const ZONES = { trackerTimeZone: 'Australia/Sydney', reportTimeZone: 'Asia/Dhaka' };
@@ -131,9 +131,9 @@ describe('buildPinstripeReport against a fake Google', () => {
 
     // Click row budget is a CPC formula; impression row budget is the tracker number.
     const data = batch.requests.find((r) => r.updateCells?.start.sheetId === 0 && r.updateCells.start.rowIndex === 1 && r.updateCells.start.columnIndex === 0);
-    expect(data?.updateCells.rows[0].values[16].userEnteredValue.formulaValue).toBe('=IF(E2="","",E2*0.4)');
+    expect(data?.updateCells.rows[0].values[PINSTRIPE_COL.budget].userEnteredValue.formulaValue).toBe('=IF(E2="","",E2*0.4)');
     expect(data?.updateCells.rows[1].values[1].userEnteredValue.stringValue).toBe('Impressions');
-    expect(data?.updateCells.rows[1].values[16].userEnteredValue.numberValue).toBe(2000);
+    expect(data?.updateCells.rows[1].values[PINSTRIPE_COL.budget].userEnteredValue.numberValue).toBe(2000);
   });
 
   it('names the tracker when there is no access to it', async () => {
@@ -217,6 +217,13 @@ describe('every write fits inside the tabs', () => {
       expect(cell.userEnteredValue).toEqual({ stringValue: 'Required (without extra)' });
       expect(cell.note).toContain('impressions for impression campaigns');
       expect(cell.note).toContain('Does not include the 10% extra');
+    }
+  });
+  it('explains the four margins in their header notes on every tab', () => {
+    const margins = [PINSTRIPE_COL.margin, PINSTRIPE_COL.projMargin, PINSTRIPE_COL.ioMargin, PINSTRIPE_COL.overallMargin];
+    for (const sheetId of [0, 2001, 2002]) {
+      const notes = requests.filter((r) => r.updateCells?.start.sheetId === sheetId && r.updateCells.start.rowIndex === 0 && r.updateCells.fields === 'userEnteredValue,note');
+      expect(notes.map((r) => r.updateCells.start.columnIndex).sort((a: number, b: number) => a - b)).toEqual([PINSTRIPE_COL.required, ...margins]);
     }
   });
   it('the checker catches the old 26-column mistake', () => {

@@ -3,7 +3,7 @@ import { serialFromYmd } from '@/engine/dates/serial';
 import { ValidationError } from '@/shared/errors';
 import { PINSTRIPE_DEFAULTS, parsePinstripeConfig } from './config';
 import { calculatePinstripe, campaignHealth, campaignType, type PinstripeTarget } from './rules';
-import { PINSTRIPE_HEADERS, PINSTRIPE_GROUP_KEY_COLUMN, buildPinstripeSheetSpec } from './sheet';
+import { PINSTRIPE_COL, PINSTRIPE_HEADERS, PINSTRIPE_GROUP_KEY_COLUMN, buildPinstripeSheetSpec } from './sheet';
 import { pinstripeModule } from './index';
 
 // Made-up campaigns; numbers worked out by hand.
@@ -90,9 +90,9 @@ describe('calculatePinstripe', () => {
       PINSTRIPE_DEFAULTS,
     );
     const [main, second] = r.rows;
-    // One target, on the main IO; what is still needed (Total 1,250 − 900 − 100) on the last IO; campaign health on both.
-    expect(main).toMatchObject({ isLatest: false, targeted: 1375, required: null, impressionsNeeded: null, budget: 500 });
-    expect(second).toMatchObject({ isChild: true, isLatest: true, targeted: null, achieved: 100, required: 250, budget: null, start: day(1), end: day(30) });
+    // Main: Total 1,250. 2nd: what is left for it, 1,250 − 900 = 350 (+10% = 385). Still needed 350 − 100 = 250, on the last IO.
+    expect(main).toMatchObject({ isLatest: false, totalTarget: 1250, targeted: 1375, required: null, impressionsNeeded: null, budget: 500 });
+    expect(second).toMatchObject({ isChild: true, isLatest: true, totalTarget: 350, targeted: 385, achieved: 100, required: 250, budget: null, start: day(1), end: day(30) });
     expect(main?.health).toBe(campaignHealth(day(1), day(30), 1250, 1000, day(11), PINSTRIPE_DEFAULTS));
     expect(second?.health).toBe(main?.health);
     expect(r.groups).toHaveLength(1);
@@ -142,26 +142,50 @@ describe('Pinstripe Report tab', () => {
     expect(spec.rows.every((row) => row.length === PINSTRIPE_HEADERS.length)).toBe(true);
   });
 
+  const at = (row: number, k: keyof typeof PINSTRIPE_COL) => cell(row, PINSTRIPE_COL[k]);
+
   it('click rows get a CPC budget formula, impression rows the tracker budget', () => {
-    expect(cell(0, 1)).toBe('Clicks');
-    expect(cell(0, 16)).toBe('=IF(E2="","",E2*0.4)');
-    expect(cell(1, 1)).toBe('Impressions');
-    expect(cell(1, 16)).toBe(2000);
+    expect(at(0, 'type')).toBe('Clicks');
+    expect(at(0, 'budget')).toBe('=IF(E2="","",E2*0.4)');
+    expect(at(1, 'type')).toBe('Impressions');
+    expect(at(1, 'budget')).toBe(2000);
   });
 
   it('Achieved follows the Type column', () => {
-    expect(cell(0, 6)).toBe('=IF($B2="Impressions",J2,I2)');
-    expect(cell(0, 5)).toBe('=IF(E2="","",ROUND(E2+(E2*10%),0))');
-    expect(String(cell(0, 17))).toContain('SUMIF($AD$2:$AD,$AD2,$N$2:$N)');
+    expect(at(0, 'achieved')).toBe('=IF($B2="Impressions",J2,I2)');
+    expect(at(0, 'targeted')).toBe('=IF(E2="","",ROUND(E2+(E2*10%),0))');
+    expect(String(at(0, 'netProfit'))).toContain('SUMIF($AD$2:$AD,$AD2,$T$2:$T)'); // media is in T
     // Still needed: Total target (E, no buffer) − every IO's delivery.
-    expect(cell(0, 7)).toBe('=IFERROR(IF($E$2="","",MAX($E$2-SUMIF($AD$2:$AD,$AD2,$G$2:$G),0)),"")');
+    expect(at(0, 'required')).toBe('=IFERROR(IF($E$2="","",MAX($E$2-SUMIF($AD$2:$AD,$AD2,$G$2:$G),0)),"")');
+  });
+
+  it('Health and days after the impressions, the four margins side by side, Comment last; each margin explained', () => {
+    expect(spec.headers.slice(12, 27)).toEqual([
+      'Required Total Impression', 'Campaign Health', 'Remaining Days', 'Margin %', 'Projected Margin %', 'IO Margin %', 'Overall Margin %',
+      'Inventory cost', 'FS Service fee', 'Nova fee', 'Budget', 'Net profit', 'Projected Media Cost', 'Projected Net Profit', 'Comment',
+    ]);
+    expect(Object.keys(spec.headerNotes ?? {}).map(Number)).toEqual([7, 15, 16, 17, 18]);
+    expect(spec.headerNotes?.[PINSTRIPE_COL.ioMargin]).toContain('impressions × Budget ÷ impression target');
+    expect(at(0, 'margin')).toBe('=IF(X2="","",X2/W2)');
+    expect(at(0, 'projMargin')).toBe('=IF(Z2="","",Z2/W2)');
   });
 
   it('IO and overall margin columns, with the impression rate taken from the first IO', () => {
-    expect(spec.headers[25]).toBe('IO Margin %');
-    expect(spec.headers[26]).toBe('Overall Margin %');
-    expect(cell(1, 25)).toBe('=IFERROR((IF($B3="Impressions",J3*$Q$3/$E$3,I3*0.4)-N3*(1+0.15)-(J3/1000)*0.8)/(IF($B3="Impressions",J3*$Q$3/$E$3,I3*0.4)),"")');
-    expect(String(cell(0, 26))).toContain('SUMIF($AD$2:$AD,$AD2,$I$2:$I)*0.4');
+    expect(at(1, 'ioMargin')).toBe('=IFERROR((IF($B3="Impressions",J3*$W$3/$E$3,I3*0.4)-T3*(1+0.15)-(J3/1000)*0.8)/(IF($B3="Impressions",J3*$W$3/$E$3,I3*0.4)),"")');
+    expect(String(at(0, 'overallMargin'))).toContain('SUMIF($AD$2:$AD,$AD2,$I$2:$I)*0.4');
+  });
+
+  it("a 2nd IO's own Total is main Total − earlier IOs' delivery", () => {
+    const two = buildPinstripeSheetSpec(
+      calculatePinstripe(
+        { today: day(11), rows: [io('Coastal Bank - Q4', 900, 60000, 40), io('Coastal Bank - Q4 2nd', 100, 5000, 5)], targets: new Map([['coastal bank - q4', target({ target: 1250 })]]) },
+        PINSTRIPE_DEFAULTS,
+      ),
+      PINSTRIPE_DEFAULTS,
+    );
+    expect(two.rows[1]?.[PINSTRIPE_COL.total]?.value).toBe('=IF($E$2="","",MAX($E$2-SUM($G$2:G2),0))');
+    expect(two.rows[1]?.[PINSTRIPE_COL.targeted]?.value).toBe('=IF(E3="","",ROUND(E3+(E3*10%),0))');
+    expect(two.rows[1]?.[PINSTRIPE_COL.budget]?.value).toBeNull();
   });
 });
 
