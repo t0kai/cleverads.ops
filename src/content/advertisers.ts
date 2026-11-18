@@ -114,4 +114,36 @@ export const SEED_ADVERTISERS: readonly AdvertiserSummary[] = [
       reportPrefix: 'Ufurnish Optimization Report - ',
     },
   },
+  {
+    id: 'businessinsider',
+    name: 'Business Insider',
+    moduleId: 'businessinsider',
+    rulesVersion: 'v1',
+    timeZone: 'Australia/Sydney',
+    sources: {
+      // Same CAMPAIGN TRACKER GLOBAL file, Business Insider's own tab. Read only.
+      trackerId: '157r8wGSMc11tV6jvRCny3JxUlHLxOose_HMikAm8BY8',
+      trackerTab: 'Business Insider',
+      trackerHeaderRow: 5,
+      // Same Results folder as the other reports.
+      outputFolderId: '1Z_YVfaCfV4CnqB6uKJb_Blh3Fn0EE0PK',
+      reportPrefix: 'Business Insider Optimization Report - ',
+    },
+  },
+  {
+    id: 'economist',
+    name: 'The Economist',
+    moduleId: 'economist',
+    rulesVersion: 'v1',
+    timeZone: 'Australia/Sydney',
+    sources: {
+      // Same CAMPAIGN TRACKER GLOBAL file, The Economist's own tab. Read only.
+      trackerId: '157r8wGSMc11tV6jvRCny3JxUlHLxOose_HMikAm8BY8',
+      trackerTab: 'The Economist',
+      trackerHeaderRow: 5,
+      // Same Results folder as the other reports.
+      outputFolderId: '1Z_YVfaCfV4CnqB6uKJb_Blh3Fn0EE0PK',
+      reportPrefix: 'The Economist Optimization Report - ',
+    },
+  },
 ];

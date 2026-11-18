@@ -170,6 +170,69 @@ const loaders: Record<string, () => Promise<ReportRunner>> = {
         orphanFollowOns: [],
       }),
     };
+  },  businessinsider: async () => {
+    const [{ BUSINESS_INSIDER_DEFAULTS }, { groupBusinessInsiderCampaigns }, { buildBusinessInsiderReport }] = await Promise.all([
+      import('@/advertisers/businessinsider/config'),
+      import('@/advertisers/businessinsider/names'),
+      import('./businessinsider/buildBusinessInsiderReport'),
+    ]);
+    const c = BUSINESS_INSIDER_DEFAULTS;
+    return {
+      label: 'businessinsider',
+      version: 'rules v1',
+      rates: [
+        { label: 'Billing currency', value: 'US$ (costs in A$)' },
+        { label: 'Client CPC', value: `US$${c.clientCpcUsd.toFixed(2)}` },
+        { label: 'A$ budget', value: 'from the tracker' },
+        { label: 'Target buffer', value: pct(c.targetBuffer) },
+        { label: 'DV360/FS fee', value: `${+(c.fsRate * 100).toFixed(2)}%` },
+        { label: 'Nova fee', value: `${money(c.novaCpm)} CPM on Nova impressions` },
+        { label: 'Nova %', value: `${pct(c.novaShare)} (editable in the sheet)` },
+        { label: 'Minimum margin', value: pct(c.minMargin) },
+        { label: 'Urgent window', value: `${c.urgentDays} days or less` },
+        { label: 'CTR range', value: `${pct(c.ctrLow)} to below ${pct(c.ctrHigh)}` },
+      ],
+      urgentDays: c.urgentDays,
+      writeLabel: 'Writing Report, Urgent, Margin Issue and Settings tabs',
+      build: ({ sources, ...run }) => buildBusinessInsiderReport({ ...run, sources, config: c }),
+      // Business Insider names follow-on IOs "<campaign> 2 IO"; every IO belongs to some campaign.
+      groupCheck: (rows) => ({
+        campaignsWithFollowOn: groupBusinessInsiderCampaigns(rows).filter((g) => g.members.length > 1).length,
+        orphanFollowOns: [],
+      }),
+    };
+  },
+  economist: async () => {
+    const [{ ECONOMIST_DEFAULTS }, { groupEconomistCampaigns }, { buildEconomistReport }] = await Promise.all([
+      import('@/advertisers/economist/config'),
+      import('@/advertisers/economist/names'),
+      import('./economist/buildEconomistReport'),
+    ]);
+    const c = ECONOMIST_DEFAULTS;
+    return {
+      label: 'economist',
+      version: 'rules v1',
+      rates: [
+        { label: 'Billing currency', value: '£ (costs in A$)' },
+        { label: 'Client CPC', value: 'per country, from the tracker' },
+        { label: 'A$ budget', value: 'from the tracker' },
+        { label: 'Target buffer', value: pct(c.targetBuffer) },
+        { label: 'DV360/FS fee', value: `${+(c.fsRate * 100).toFixed(2)}%` },
+        { label: 'Nova fee', value: `${money(c.novaCpm)} CPM on Nova impressions` },
+        { label: 'Nova %', value: `${pct(c.novaShare)} (editable in the sheet)` },
+        { label: 'Minimum margin', value: pct(c.minMargin) },
+        { label: 'Urgent window', value: `${c.urgentDays} days or less` },
+        { label: 'CTR range', value: `${pct(c.ctrLow)} to below ${pct(c.ctrHigh)}` },
+      ],
+      urgentDays: c.urgentDays,
+      writeLabel: 'Writing Report, Urgent, Margin Issue and Settings tabs',
+      build: ({ sources, ...run }) => buildEconomistReport({ ...run, sources, config: c }),
+      // The Economist names follow-on IOs "IO #2"; every IO belongs to some country.
+      groupCheck: (rows) => ({
+        campaignsWithFollowOn: groupEconomistCampaigns(rows).filter((g) => g.members.length > 1).length,
+        orphanFollowOns: [],
+      }),
+    };
   },
 };
 

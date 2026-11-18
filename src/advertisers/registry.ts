@@ -13,6 +13,8 @@ const loaders: Record<string, () => Promise<AnyModule>> = {
   timeout: () => import('./timeout').then((m) => m.timeOutModule),
   benzinga: () => import('./benzinga').then((m) => m.benzingaModule),
   ufurnish: () => import('./ufurnish').then((m) => m.ufurnishModule),
+  businessinsider: () => import('./businessinsider').then((m) => m.businessInsiderModule),
+  economist: () => import('./economist').then((m) => m.economistModule),
 };
 
 export function listModuleIds(): string[] {
