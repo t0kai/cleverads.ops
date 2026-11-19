@@ -118,7 +118,7 @@ interface Draft {
 export function calculateAcm(input: ModuleInput, config: AcmConfig): AcmResult {
   const { today } = input;
   const warnings: string[] = [];
-  const groups = groupCampaigns(input.rows);
+  const groups = groupCampaigns(input.rows, input.targets);
   const out: AcmGroupResult[] = [];
 
   for (const g of groups) {

@@ -25,3 +25,37 @@ describe('groupCampaigns', () => {
     expect(normalizeKey(' Rabo IO  -  X ')).toBe('rabo - x');
   });
 });
+
+describe('tracker spellings that differ from DV360', () => {
+  it('treats "-" the same with or without spaces (and en/em dashes)', () => {
+    const k = 'matid 100001 - acme widgets - 100001 - november 14, 2026 - 9000001';
+    expect(normalizeKey('MatID 100001-Acme Widgets-100001-November 14, 2026-9000001')).toBe(k);
+    expect(normalizeKey('MatID 100001 - Acme Widgets - 100001 - November 14, 2026 - 9000001')).toBe(k);
+    expect(normalizeKey('MatID 100001 – Acme Widgets —100001- November 14, 2026 -9000001')).toBe(k);
+    expect(normalizeKey('Mat ID 100002  - Bay Rugs')).toBe('mat id 100002 - bay rugs');
+  });
+
+  const tracker = new Set(['zed tours - 9000002', 'nov 16 promo - 9000003', 'gamma 12']);
+  const known = (k: string) => tracker.has(k);
+
+  it.each([
+    ['Zed Tours - 9000002 2nd #2', undefined, { base: 'Zed Tours - 9000002', order: 2, label: '2nd' }],
+    ['Zed Tours - 9000002 #2', known, { base: 'Zed Tours - 9000002', order: 2, label: '2nd' }],
+    ['Zed Tours - 9000002 3', known, { base: 'Zed Tours - 9000002', order: 3, label: '3rd' }],
+    // Without the tracker, bare endings stay part of the name.
+    ['Zed Tours - 9000002 2', undefined, { base: 'Zed Tours - 9000002 2', order: 1, label: '' }],
+    // The full name is itself in the tracker → it is a main IO, not a "2nd".
+    ['Gamma 12', known, { base: 'Gamma 12', order: 1, label: '' }],
+    // The rest of the name is not in the tracker → the number stays.
+    ['Unknown Promo 2', known, { base: 'Unknown Promo 2', order: 1, label: '' }],
+    // A long IO number at the end is never read as an order.
+    ['Nov 16 Promo - 9000003', known, { base: 'Nov 16 Promo - 9000003', order: 1, label: '' }],
+  ] as const)('%s', (name, isKnown, expected) => expect(splitName(name, isKnown)).toEqual(expected));
+
+  it('groups the 2nd IO under its main when the tracker is passed', () => {
+    const groups = groupCampaigns([{ name: 'Zed Tours-9000002' }, { name: 'Zed Tours - 9000002 2' }], tracker);
+    expect(groups).toHaveLength(1);
+    expect(groups[0]?.key).toBe('zed tours - 9000002');
+    expect(groups[0]?.members.map((m) => m.order)).toEqual([1, 2]);
+  });
+});

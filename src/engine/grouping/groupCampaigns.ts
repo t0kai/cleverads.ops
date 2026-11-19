@@ -15,11 +15,18 @@ export interface CampaignGroup<T> {
   readonly hasMain: boolean;
 }
 
-/** Groups main + 2nd/3rd IOs. Keeps the CSV's order of first appearance. */
-export function groupCampaigns<T extends { readonly name: string }>(items: readonly T[]): CampaignGroup<T>[] {
+/**
+ * Groups main + 2nd/3rd IOs. Keeps the CSV's order of first appearance.
+ * Pass the tracker's names (`known`) to also read "… #2" and "… 2" endings — see splitName.
+ */
+export function groupCampaigns<T extends { readonly name: string }>(
+  items: readonly T[],
+  known?: { has(key: string): boolean },
+): CampaignGroup<T>[] {
+  const isKnown = known ? (key: string) => known.has(key) : undefined;
   const byKey = new Map<string, GroupMember<T>[]>();
   for (const item of items) {
-    const s = splitName(item.name);
+    const s = splitName(item.name, isKnown);
     const key = normalizeKey(s.base);
     const list = byKey.get(key) ?? [];
     if (!byKey.has(key)) byKey.set(key, list);

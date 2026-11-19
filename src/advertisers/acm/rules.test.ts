@@ -67,6 +67,29 @@ describe('calculateAcm edge cases', () => {
     expect(r.rows[1]).toMatchObject({ totalClicks: 90, targetedClicks: 99, budget: null });
     expect(r.rows[1]?.requiredClicks).toBe(80); // Total 100 − (10 + 10), shown on the last IO
   });
+  it('matches tracker names whatever the spaces around "-", and reads "2nd #2" / a bare "2" as the 2nd IO', () => {
+    const row = (name: string, clicks: number) => ({ name, impressions: 1000, clicks, cost: 1, objective: '', status: '' });
+    const r = calculateAcm(
+      {
+        ...base,
+        rows: [
+          row('MatID 100001 - Acme Widgets - 9000001', 5),
+          row('MatID 100002 - Bay Rugs - 9000002', 10),
+          row('MatID 100002 - Bay Rugs - 9000002 2nd #2', 4),
+          row('MatID 100003 Zed Tours - 9000003', 20),
+          row('MatID 100003 Zed Tours - 9000003 2', 6),
+        ],
+        targets: new Map([
+          ['matid 100001 - acme widgets - 9000001', { start: day(1), end: day(30), clicks: 100 }], // tracker: "…100001-Acme Widgets-9000001"
+          ['matid 100002 - bay rugs - 9000002', { start: day(1), end: day(30), clicks: 200 }],
+          ['matid 100003 zed tours - 9000003', { start: day(1), end: day(30), clicks: 300 }],
+        ]),
+      },
+      ACM_DEFAULTS,
+    );
+    expect(r.warnings).toEqual([]);
+    expect(r.rows.map((x) => x.totalClicks)).toEqual([100, 200, 190, 300, 280]);
+  });
   it('zero impressions never divides by zero', () => {
     const r = calculateAcm(
       { ...base, rows: [{ name: 'Z', impressions: 0, clicks: 0, cost: 0, objective: '', status: '' }], targets: new Map([['z', { start: day(1), end: day(30), clicks: 300 }]]) },
