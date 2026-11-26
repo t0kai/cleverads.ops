@@ -24,7 +24,7 @@ const GRID_COLUMNS = ACM_COLUMNS.length + 2;
  * Columns the template does not have use its last header (T) as their style, as before.
  */
 const TEMPLATE_HEADER_COL: Partial<Record<AcmColumn, number>> = {
-  name: 0, start: 1, end: 2, total: 3, targeted: 4, achieved: 5, required: 6, ctr: 7, impressions: 8, imprNeeded: 9,
+  name: 0, start: 1, end: 2, total: 3, targeted: 4, achieved: 5, required: 6, ctr: 7, impressions: 8, novaImpr: 8, nonNovaImpr: 8, novaShare: 8, imprNeeded: 9,
   imprTotal: 10, media: 11, fs: 12, nova: 13, budget: 14, netProfit: 15, margin: 16, health: 17, days: 18, comment: 19,
 };
 const TEMPLATE_LAST_HEADER = 19;
@@ -82,6 +82,8 @@ function numberFormats(sheetId: number, rowCount: number): object[] {
   return [
     fmt(ACM_COL.start, ACM_COL.end + 1, 'DATE', 'dd/MM/yyyy'),
     one('ctr', 'PERCENT', '0.00%'),
+    fmt(ACM_COL.novaImpr, ACM_COL.nonNovaImpr + 1, 'NUMBER', '#,##0'),
+    one('novaShare', 'PERCENT', '0%'),
     fmt(ACM_COL.margin, ACM_COL.overallMargin + 1, 'PERCENT', '0.00%'), // the four margins, side by side
     one('projMedia', 'NUMBER', '#,##0.00'),
     one('projNet', 'NUMBER', '#,##0.00'),
@@ -107,6 +109,7 @@ export function conditionalRules(sheetId: number, c: AcmConfig): object[] {
     custom(`=AND(ISNUMBER($${L.days}2),$${L.days}2>0,$${L.days}2<=${c.daysOrange})`, col('days'), bg('#FCE5CD')),
     red('ioMargin'),
     red('overallMargin'),
+    custom(`=ISNUMBER($${L.novaShare}2)`, col('novaShare'), bg('#FFF2CC')), // the editable Nova % cell
   ];
   return rules.map((rule, index) => ({ addConditionalFormatRule: { rule, index } }));
 }
@@ -155,8 +158,8 @@ export function buildReportRequests({ ids, spec, result, config, lastUpdated }: 
         fields: 'title,index,gridProperties.frozenRowCount,gridProperties.frozenColumnCount,gridProperties.columnCount,gridProperties.rowCount',
       },
     },
-    { addSheet: { properties: { sheetId: ids.urgent, title: 'Urgent', index: 1, gridProperties: frozen } } },
-    { addSheet: { properties: { sheetId: ids.margin, title: 'Margin Issue', index: 2, gridProperties: frozen } } },
+    { addSheet: { properties: { sheetId: ids.urgent, title: 'Urgent', index: 1, gridProperties: { ...frozen, columnCount: GRID_COLUMNS } } } },
+    { addSheet: { properties: { sheetId: ids.margin, title: 'Margin Issue', index: 2, gridProperties: { ...frozen, columnCount: GRID_COLUMNS } } } },
     { updateSheetProperties: { properties: { sheetId: ids.formula, title: 'Formula', index: 3 }, fields: 'title,index' } },
 
     // Report header: each column takes the header style of the same column in the template (the order differs since

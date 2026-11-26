@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { readDv360Csv } from '@/engine/csv/dv360';
 import { normalizeKey } from '@/engine/grouping/names';
 import { convertSerialZone, serialFromDmy, serialFromYmd } from '@/engine/dates/serial';
-import { acmModule } from '@/advertisers/acm';
+import { ACM_COL, ACM_LETTER, acmModule } from '@/advertisers/acm';
 import { campaignHealth } from '@/advertisers/acm/rules';
 import type { AcmRow } from '@/advertisers/acm';
 import type { TargetRow } from '@/advertisers/types';
@@ -199,10 +199,11 @@ describe('ACM golden test · 2 Oct 2026', () => {
 
   it('builds a sheet spec with one formula row per IO and the group key hidden', () => {
     const spec = acmModule.buildSheetSpec(result, config);
+    const G = ACM_LETTER.groupKey;
     expect(spec.rows).toHaveLength(49);
-    expect(spec.hiddenColumns).toEqual([28]);
+    expect(spec.hiddenColumns).toEqual([ACM_COL.groupKey + 1]); // the hidden Group Key column
     expect(spec.rows[3]?.[6]?.value).toBeNull(); // main IO (sheet row 5): Required shown on the last IO only
-    expect(spec.rows[4]?.[6]?.value).toBe('=IFERROR(IF($D$5="","",MAX($D$5-SUMIF($AB$2:$AB,$AB6,$F$2:$F),0)),"")'); // Total Clicks − all IOs
+    expect(spec.rows[4]?.[6]?.value).toBe(`=IFERROR(IF($D$5="","",MAX($D$5-SUMIF($${G}$2:$${G},$${G}6,$F$2:$F),0)),"")`); // Total Clicks − all IOs
     // The 2nd IO's own Total and Targeted (Oct 2026): main Total − main's clicks, + 10%.
     expect(spec.rows[4]?.[3]?.value).toBe('=IF($D$5="","",MAX($D$5-SUM($F$5:F5),0))');
     expect(spec.rows[4]?.[4]?.value).toBe('=IF(D6="","",ROUND(D6+(D6*10%),0))');

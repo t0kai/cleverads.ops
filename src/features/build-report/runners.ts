@@ -34,12 +34,13 @@ const loaders: Record<string, () => Promise<ReportRunner>> = {
     const c = ACM_DEFAULTS;
     return {
       label: 'acm',
-      version: 'rules v4',
+      version: 'rules v5',
       rates: [
         { label: 'Client CPC', value: money(c.clientCpc) },
         { label: 'Click buffer', value: pct(c.clickBuffer) },
         { label: 'FS service fee', value: pct(c.fsRate) },
-        { label: 'Nova fee', value: `${money(c.novaCpm)} CPM` },
+        { label: 'Nova fee', value: `${money(c.novaCpm)} CPM, on Nova impressions only` },
+        { label: 'Nova %', value: `${pct(c.novaShare)} by default (editable per campaign in the sheet)` },
         { label: 'Minimum margin', value: pct(c.minMargin) },
         { label: 'Urgent window', value: `${c.urgentDays} days` },
         { label: 'CTR range', value: `${pct(c.ctrLow)}–${pct(c.ctrHigh)}` },

@@ -14,6 +14,8 @@ export const AcmConfigSchema = z.object({
   fsRate: z.number().min(0).max(1).default(0.15),
   /** Nova fee, A$ per 1,000 impressions */
   novaCpm: z.number().min(0).default(0.8),
+  /** Share of impressions that carry the Nova fee (Nova creatives). Default 100%; changed per campaign in the sheet. */
+  novaShare: z.number().min(0).max(1).default(1),
   /** Below this projected margin → Margin Issue tab + red */
   minMargin: z.number().min(0).max(1).default(0.75),
   urgentDays: z.number().int().min(0).max(90).default(12),

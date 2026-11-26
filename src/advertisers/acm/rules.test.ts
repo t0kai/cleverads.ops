@@ -90,6 +90,30 @@ describe('calculateAcm edge cases', () => {
     expect(r.warnings).toEqual([]);
     expect(r.rows.map((x) => x.totalClicks)).toEqual([100, 200, 190, 300, 280]);
   });
+  it('charges Nova only on Nova impressions: 100% by default, less when Nova % is lowered', () => {
+    const input = {
+      ...base,
+      rows: [
+        { name: 'N', impressions: 10000, clicks: 50, cost: 5, objective: '', status: '' },
+        { name: 'N 2nd', impressions: 20000, clicks: 100, cost: 10, objective: '', status: '' },
+      ],
+      targets: new Map([['n', { start: day(1), end: day(30), clicks: 1000 }]]),
+    };
+    const all = calculateAcm(input, ACM_DEFAULTS);
+    expect(all.rows[0]).toMatchObject({ novaShare: 1, novaImpressions: 10000, nonNovaImpressions: 0, novaFee: 8 });
+    expect(all.rows[1]?.novaShare).toBeNull(); // the campaign's Nova % sits on its first row
+
+    const part = calculateAcm(input, parseAcmConfig({ novaShare: 0.4 }));
+    expect(part.rows[0]).toMatchObject({ novaShare: 0.4, novaImpressions: 4000, nonNovaImpressions: 6000 });
+    expect(part.rows[0]?.novaFee).toBeCloseTo(3.2, 9); // 4,000 ÷ 1000 × 0.8
+    // The last IO is costed on the impressions still to come × Nova %.
+    const K = part.rows[1]?.impressionsTotal ?? 0;
+    expect(part.rows[1]?.novaFee).toBeCloseTo(((K * 0.4) / 1000) * 0.8, 9);
+    // Less Nova fee → every margin goes up.
+    for (const k of ['ioMargin', 'overallMargin', 'margin', 'projectedMargin'] as const) {
+      expect(part.rows[0]?.[k] ?? 0).toBeGreaterThan(all.rows[0]?.[k] ?? 0);
+    }
+  });
   it('zero impressions never divides by zero', () => {
     const r = calculateAcm(
       { ...base, rows: [{ name: 'Z', impressions: 0, clicks: 0, cost: 0, objective: '', status: '' }], targets: new Map([['z', { start: day(1), end: day(30), clicks: 300 }]]) },

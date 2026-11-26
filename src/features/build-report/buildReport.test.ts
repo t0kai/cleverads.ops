@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ACM_COL, ACM_HEADERS, acmModule } from '@/advertisers/acm';
+import { ACM_COL, ACM_HEADERS, ACM_LETTER, acmModule } from '@/advertisers/acm';
 import { serialFromYmd } from '@/engine/dates/serial';
 import { ValidationError } from '@/shared/errors';
 import { buildReportRequests, formatLastUpdated, isoDay, toCellData } from './acmSheetRequests';
@@ -100,40 +100,48 @@ describe('report sheet requests', () => {
     const data = requests.find((r) => r.updateCells?.start.sheetId === 0 && r.updateCells.start.rowIndex === 1 && r.updateCells.start.columnIndex === 0);
     const out = data?.updateCells.rows as { values: { userEnteredValue?: Record<string, unknown> }[] }[];
     const at = (row: number, k: keyof typeof ACM_COL) => out[row]?.values[ACM_COL[k]]?.userEnteredValue;
+    const L = ACM_LETTER;
+    const G = L.groupKey;
     expect(out).toHaveLength(3);
-    expect(out[0]?.values).toHaveLength(28);
+    expect(out[0]?.values).toHaveLength(ACM_HEADERS.length);
     expect(at(0, 'name')).toEqual({ stringValue: 'Alpha - 1' });
     expect(at(0, 'required')).toBeUndefined(); // G: blank on the main IO
-    expect(at(1, 'required')).toEqual({ formulaValue: '=IFERROR(IF($D$2="","",MAX($D$2-SUMIF($AB$2:$AB,$AB3,$F$2:$F),0)),"")' }); // G on the last IO: Total − all IOs
-    expect(String(at(0, 'health')?.formulaValue)).toContain('SUMIF($AB$2:$AB,$AB2,$F$2:$F)>=$D$2'); // campaign health against Total Clicks
+    expect(at(1, 'required')).toEqual({ formulaValue: `=IFERROR(IF($D$2="","",MAX($D$2-SUMIF($${G}$2:$${G},$${G}3,$F$2:$F),0)),"")` }); // G on the last IO: Total − all IOs
+    expect(String(at(0, 'health')?.formulaValue)).toContain(`SUMIF($${G}$2:$${G},$${G}2,$F$2:$F)>=$D$2`); // campaign health against Total Clicks
     expect(String(at(1, 'health')?.formulaValue)).toContain('Completed'); // health on the 2nd too
-    expect(at(0, 'nova')).toEqual({ formulaValue: '=IF(I2="","",(I2/1000)*0.8)' }); // earlier IO costed on spend
-    expect(at(0, 'projMedia')).toEqual({ formulaValue: '=R2' }); // earlier IO projects what it spent (media is in R)
+    expect(at(0, 'nova')).toEqual({ formulaValue: `=IF(${L.novaImpr}2="","",(${L.novaImpr}2/1000)*0.8)` }); // earlier IO costed on its Nova impressions
+    expect(at(0, 'novaShare')).toEqual({ numberValue: 1 }); // Nova % 100% by default, on the first row
+    expect(at(1, 'novaShare')).toBeUndefined();
+    expect(at(1, 'novaImpr')).toEqual({ formulaValue: `=IF(I3="","",I3*IF(ISNUMBER($${L.novaShare}$2),$${L.novaShare}$2,1))` });
+    expect(at(1, 'nonNovaImpr')).toEqual({ formulaValue: `=IF(I3="","",I3-${L.novaImpr}3)` });
+    expect(at(1, 'nova')).toEqual({ formulaValue: `=IFERROR(IF(${L.imprTotal}3="","",(${L.imprTotal}3*IF(ISNUMBER($${L.novaShare}$2),$${L.novaShare}$2,1)/1000)*0.8),"")` });
+    expect(at(0, 'projMedia')).toEqual({ formulaValue: `=${L.media}2` }); // earlier IO projects what it spent
     // The 2nd IO's own Total (main Total − main's clicks) and Targeted (+10%); no second budget.
     expect(at(1, 'total')).toEqual({ formulaValue: '=IF($D$2="","",MAX($D$2-SUM($F$2:F2),0))' });
     expect(at(1, 'targeted')).toEqual({ formulaValue: '=IF(D3="","",ROUND(D3+(D3*10%),0))' });
     expect(at(1, 'budget')).toBeUndefined();
-    expect(at(1, 'ioMargin')).toEqual({ formulaValue: '=IFERROR((F3*0.6-R3*(1+0.15)-(I3/1000)*0.8)/(F3*0.6),"")' });
-    expect(String(at(0, 'overallMargin')?.formulaValue)).toContain('SUMIF($AB$2:$AB,$AB2,$F$2:$F)'); // on the head row
+    expect(at(1, 'ioMargin')).toEqual({ formulaValue: `=IFERROR((F3*0.6-${L.media}3*(1+0.15)-(${L.novaImpr}3/1000)*0.8)/(F3*0.6),"")` });
+    expect(String(at(0, 'overallMargin')?.formulaValue)).toContain(`SUMIF($${G}$2:$${G},$${G}2,$F$2:$F)`); // on the head row
     expect(at(1, 'overallMargin')).toBeUndefined();
-    expect(at(0, 'margin')).toEqual({ formulaValue: '=IF(V2="","",V2/U2)' }); // Net profit ÷ Budget
-    expect(at(0, 'projMargin')).toEqual({ formulaValue: '=IF(X2="","",X2/U2)' }); // Projected net ÷ Budget
+    expect(at(0, 'margin')).toEqual({ formulaValue: `=IF(${ACM_LETTER.netProfit}2="","",${ACM_LETTER.netProfit}2/${ACM_LETTER.budget}2)` }); // Net profit ÷ Budget
+    expect(at(0, 'projMargin')).toEqual({ formulaValue: `=IF(${ACM_LETTER.projNet}2="","",${ACM_LETTER.projNet}2/${ACM_LETTER.budget}2)` }); // Projected net ÷ Budget
     expect(at(1, 'groupKey')).toEqual({ stringValue: 'alpha - 1' }); // hidden group key
   });
 
   it('lays the columns out: Health and days after K, the four margins side by side, Comment last', () => {
-    expect(ACM_HEADERS.slice(10, 25)).toEqual([
+    expect(ACM_HEADERS.slice(8, 28)).toEqual([
+      'Impressions spent', 'Nova Impressions', 'Non-Nova Impressions', 'Nova %', 'Impression needed for required clicks',
       'Required Total Impression', 'Campaign Health', 'Remaining Days', 'Margin %', 'Projected Margin %', 'IO Margin %', 'Overall Margin %',
       'Inventory cost', 'FS Service fee', 'Nova fee', 'Budget', 'Net profit', 'Projected Media Cost', 'Projected Net Profit', 'Comment',
     ]);
-    expect(ACM_HEADERS.slice(26)).toEqual(['Last Updated:', 'Group Key']);
+    expect(ACM_HEADERS.slice(29)).toEqual(['Last Updated:', 'Group Key']);
     // The header text comes from the spec; each column copies the style of the same field in the template.
     const header = requests.find((r) => r.updateCells?.start.sheetId === 0 && r.updateCells.start.rowIndex === 0 && r.updateCells.start.columnIndex === 0);
-    expect(header?.updateCells.rows[0].values.map((v: { userEnteredValue: { stringValue: string } }) => v.userEnteredValue.stringValue)).toEqual(ACM_HEADERS.slice(0, 25));
+    expect(header?.updateCells.rows[0].values.map((v: { userEnteredValue: { stringValue: string } }) => v.userEnteredValue.stringValue)).toEqual(ACM_HEADERS.slice(0, 28));
     const styles = requests.filter((r) => r.copyPaste?.destination.sheetId === 0 && r.copyPaste.pasteType === 'PASTE_FORMAT');
-    expect(styles).toHaveLength(25);
+    expect(styles).toHaveLength(28);
     const from = (k: keyof typeof ACM_COL) => styles.find((r) => r.copyPaste.destination.startColumnIndex === ACM_COL[k])?.copyPaste.source.startColumnIndex;
-    expect([from('health'), from('days'), from('margin'), from('media'), from('comment'), from('ioMargin')]).toEqual([17, 18, 16, 11, 19, 19]);
+    expect([from('health'), from('days'), from('margin'), from('media'), from('comment'), from('ioMargin'), from('novaShare')]).toEqual([17, 18, 16, 11, 19, 19, 8]);
   });
 
   it('explains the four margins in their header notes, on every tab', () => {
@@ -141,12 +149,12 @@ describe('report sheet requests', () => {
     const margins = [ACM_COL.margin, ACM_COL.projMargin, ACM_COL.ioMargin, ACM_COL.overallMargin];
     for (const sheetId of [0, 1001, 1002]) {
       const cols = notes.filter((r) => r.updateCells.start.sheetId === sheetId).map((r) => r.updateCells.start.columnIndex);
-      expect(cols.sort((a: number, b: number) => a - b)).toEqual([ACM_COL.required, ...margins]);
+      expect(cols.sort((a: number, b: number) => a - b)).toEqual([ACM_COL.required, ACM_COL.novaShare, ...margins]);
     }
     const note = (col: number) => notes.find((r) => r.updateCells.start.sheetId === 0 && r.updateCells.start.columnIndex === col)?.updateCells.rows[0].values[0].note as string;
     expect(note(ACM_COL.projMargin)).toContain('the main number for decisions');
     expect(note(ACM_COL.projMargin)).toContain('Below 75%');
-    expect(note(ACM_COL.ioMargin)).toContain('(clicks × A$0.60 − media × 1.15 − impressions ÷ 1000 × A$0.80) ÷ (clicks × A$0.60)');
+    expect(note(ACM_COL.ioMargin)).toContain('(clicks × A$0.60 − media × 1.15 − Nova impressions ÷ 1000 × A$0.80) ÷ (clicks × A$0.60)');
     for (const col of margins) expect(note(col)).toMatch(/^Shows: .*\nFormula: .*\nWhen to use: /s);
   });
 
@@ -157,21 +165,25 @@ describe('report sheet requests', () => {
       const width = Math.max(...r.updateCells.rows.map((x: { values: unknown[] }) => x.values.length));
       expect(r.updateCells.start.columnIndex + width).toBeLessThanOrEqual(cols);
     }
-    const valueTabs = requests.filter((r) => r.updateCells && r.updateCells.start.sheetId !== 0);
-    for (const r of valueTabs) expect(r.updateCells.start.columnIndex + Math.max(...r.updateCells.rows.map((x: { values: unknown[] }) => x.values.length))).toBeLessThanOrEqual(26);
+    // Urgent / Margin Issue are new tabs: they must be created wide enough for every column written.
+    for (const id of [1001, 1002]) {
+      const width = requests.find((r) => r.addSheet?.properties.sheetId === id)?.addSheet.properties.gridProperties.columnCount ?? 26;
+      const tab = requests.filter((r) => r.updateCells?.start.sheetId === id);
+      for (const r of tab) expect(r.updateCells.start.columnIndex + Math.max(...r.updateCells.rows.map((x: { values: unknown[] }) => x.values.length))).toBeLessThanOrEqual(width);
+    }
   });
 
   it('no longer greys earlier IOs, widens the Report and hides the group key column', () => {
     const grey = requests.filter((r) => r.addConditionalFormatRule?.rule.booleanRule.format.textFormat);
     expect(grey).toHaveLength(0);
-    expect(requests[0]?.updateSheetProperties.properties.gridProperties.columnCount).toBe(30);
-    expect(requests.some((r) => r.updateDimensionProperties?.range.startIndex === 27 && r.updateDimensionProperties.properties.hiddenByUser)).toBe(true);
+    expect(requests[0]?.updateSheetProperties.properties.gridProperties.columnCount).toBe(ACM_HEADERS.length + 2);
+    expect(requests.some((r) => r.updateDimensionProperties?.range.startIndex === ACM_COL.groupKey && r.updateDimensionProperties.properties.hiddenByUser)).toBe(true);
   });
 
   it('fills Urgent with values and writes "No campaigns match." on an empty tab', () => {
     const urgentRows = requests.find((r) => r.updateCells?.start.sheetId === 1001 && r.updateCells.start.rowIndex === 1)?.updateCells.rows;
     expect(urgentRows).toHaveLength(2); // Alpha ends in 7 days: main + 2nd
-    expect(urgentRows[0].values).toHaveLength(25);
+    expect(urgentRows[0].values).toHaveLength(ACM_COL.comment + 1);
     expect(urgentRows[0].values[ACM_COL.ioMargin].userEnteredValue.numberValue).toBeCloseTo(0.675, 9); // main IO margin
     expect(urgentRows[1].values[ACM_COL.total].userEnteredValue.numberValue).toBe(400); // 2nd's own Total: 500 − 100
     const marginRows = requests.find((r) => r.updateCells?.start.sheetId === 1002 && r.updateCells.start.rowIndex === 1)?.updateCells.rows;

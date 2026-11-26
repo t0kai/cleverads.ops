@@ -20,6 +20,9 @@ export const ACM_COLUMNS = [
   ['required', 'Required Clicks (without extra)'],
   ['ctr', 'Actual Average CTR'],
   ['impressions', 'Impressions spent'],
+  ['novaImpr', 'Nova Impressions'],
+  ['nonNovaImpr', 'Non-Nova Impressions'],
+  ['novaShare', 'Nova %'],
   ['imprNeeded', 'Impression needed for required clicks'],
   ['imprTotal', 'Required Total Impression'],
   ['health', 'Campaign Health'],
@@ -69,6 +72,8 @@ export const requiredNote = (c: Pick<AcmConfig, 'clickBuffer'>) =>
 export function marginNotes(c: Pick<AcmConfig, 'clientCpc' | 'fsRate' | 'novaCpm' | 'minMargin'>): Record<number, string> {
   const fsUp = (1 + c.fsRate).toFixed(2);
   return {
+    [ACM_COL.novaShare]:
+      `Share of impressions that carry the Nova fee (Nova creatives). Default 100%. If part of the campaign runs DV360 / non-Nova creatives, change it on the campaign's first row: Nova Impressions, the Nova fee (A$${c.novaCpm.toFixed(2)} per 1,000 Nova impressions), profit and all four margins recalculate, including for the impressions still to come. Blank counts as 100%.`,
     [ACM_COL.margin]:
       'Shows: how much of the full Budget is left after the media spent so far, the FS fee and the Nova fee.\n' +
       'Formula: (Budget − media spent − FS fee − Nova fee) ÷ Budget\n' +
@@ -79,7 +84,7 @@ export function marginNotes(c: Pick<AcmConfig, 'clientCpc' | 'fsRate' | 'novaCpm
       `When to use: the main number for decisions. Below ${shortPct(c.minMargin)} → Margin Issue tab.`,
     [ACM_COL.ioMargin]:
       "Shows: this IO's own margin on what it has delivered so far.\n" +
-      `Formula: (clicks × A$${c.clientCpc.toFixed(2)} − media × ${fsUp} − impressions ÷ 1000 × A$${c.novaCpm.toFixed(2)}) ÷ (clicks × A$${c.clientCpc.toFixed(2)})\n` +
+      `Formula: (clicks × A$${c.clientCpc.toFixed(2)} − media × ${fsUp} − Nova impressions ÷ 1000 × A$${c.novaCpm.toFixed(2)}) ÷ (clicks × A$${c.clientCpc.toFixed(2)})\n` +
       'When to use: to find which IO is losing money, then pause it or move budget.',
     [ACM_COL.overallMargin]:
       "Shows: the same as IO Margin %, for all the campaign's IOs together (on its first row).\n" +
@@ -122,9 +127,11 @@ function rowCells(r: AcmRow, x: number, h: number, c: AcmConfig): SheetCell[] {
   // A 2nd/3rd IO's own Total: main Total − the clicks of every IO above it (rows h … x−1).
   const ownTotal = r.isChild && !r.isHead ? `=IF(${tgt}="","",MAX(${tgt}-SUM($${L.achieved}$${h}:${L.achieved}${x - 1}),0))` : r.totalClicks;
   const total = at('total');
+  // The campaign's Nova % (first row, editable). Blank or text counts as 100% — by default every creative is Nova.
+  const share = `IF(ISNUMBER($${L.novaShare}$${h}),$${L.novaShare}$${h},1)`;
   const revenue = (clicks: string) => `${clicks}*${c.clientCpc}`;
-  const margin = (clicks: string, media: string, impressions: string) =>
-    `=IFERROR((${revenue(clicks)}-${media}*${fsUp}-(${impressions}/1000)*${c.novaCpm})/(${revenue(clicks)}),"")`;
+  const margin = (clicks: string, media: string, novaImpr: string) =>
+    `=IFERROR((${revenue(clicks)}-${media}*${fsUp}-(${novaImpr}/1000)*${c.novaCpm})/(${revenue(clicks)}),"")`;
 
   const v: Record<AcmColumn, string | number | null> = {
     name: r.name,
@@ -137,6 +144,9 @@ function rowCells(r: AcmRow, x: number, h: number, c: AcmConfig): SheetCell[] {
     required: r.isLatest ? iferror(`=IF(${tgt}="","",MAX(${tgt}-${ach},0))`) : null,
     ctr: wrap(`=IF(OR(${at('achieved')}="",${at('impressions')}="",${at('impressions')}=0),"",${at('achieved')}/${at('impressions')})`),
     impressions: r.impressions,
+    novaImpr: `=IF(${at('impressions')}="","",${at('impressions')}*${share})`,
+    nonNovaImpr: `=IF(${at('impressions')}="","",${at('impressions')}-${at('novaImpr')})`,
+    novaShare: r.isHead ? r.novaShare : null,
     imprNeeded: r.isLatest ? wrap(`=IF(OR(${at('required')}="",${at('ctr')}="",${at('ctr')}=0),"",ROUND(${at('required')}/${at('ctr')},0))`) : null,
     imprTotal: r.isLatest ? wrap(`=IF(OR(${at('impressions')}="",${at('imprNeeded')}=""),"",${at('impressions')}+${at('imprNeeded')})`) : null,
     health: healthFormula(x, tgt, ach, c),
@@ -144,14 +154,15 @@ function rowCells(r: AcmRow, x: number, h: number, c: AcmConfig): SheetCell[] {
     margin: r.isHead ? `=IF(${at('netProfit')}="","",${at('netProfit')}/${budget})` : null,
     projMargin: r.isHead ? `=IF(${at('projNet')}="","",${at('projNet')}/${budget})` : null,
     // This IO's margin on the clicks it has delivered; Overall: all IOs of the campaign together (first row).
-    ioMargin: margin(at('achieved'), at('media'), at('impressions')),
-    overallMargin: r.isHead ? margin(sumIf('achieved'), sumIf('media'), sumIf('impressions')) : null,
+    ioMargin: margin(at('achieved'), at('media'), at('novaImpr')),
+    overallMargin: r.isHead ? margin(sumIf('achieved'), sumIf('media'), sumIf('novaImpr')) : null,
     media: r.mediaCost,
     fs: wrap(`=IF(${at('media')}="","",${at('media')}*${pct(c.fsRate)})`),
-    // Nova: the latest IO is costed on the impressions it still needs; earlier IOs on what they have spent.
+    // Nova, on Nova impressions only: the latest IO is costed on the impressions it still needs × Nova %;
+    // earlier IOs on their Nova impressions.
     nova: r.isLatest
-      ? wrap(`=IF(${at('imprTotal')}="","",(${at('imprTotal')}/1000)*${c.novaCpm})`)
-      : `=IF(${at('impressions')}="","",(${at('impressions')}/1000)*${c.novaCpm})`,
+      ? wrap(`=IF(${at('imprTotal')}="","",(${at('imprTotal')}*${share}/1000)*${c.novaCpm})`)
+      : `=IF(${at('novaImpr')}="","",(${at('novaImpr')}/1000)*${c.novaCpm})`,
     budget: r.isChild ? null : `=IF(${total}="","",${total}*${c.clientCpc})`,
     netProfit: r.isHead ? `=IF(${noBudget},"",${budget}-${sumIf('media')}-${sumIf('fs')}-${sumIf('nova')})` : null,
     projMedia: r.isLatest
@@ -178,6 +189,9 @@ export function acmRowValues(r: AcmRow): (number | string | null)[] {
     required: r.requiredClicks,
     ctr: r.ctr,
     impressions: r.impressions,
+    novaImpr: r.novaImpressions,
+    nonNovaImpr: r.nonNovaImpressions,
+    novaShare: r.novaShare,
     imprNeeded: r.impressionsNeeded,
     imprTotal: r.impressionsTotal,
     health: r.health || null,

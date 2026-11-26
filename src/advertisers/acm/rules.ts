@@ -26,6 +26,11 @@ export interface AcmRow {
   readonly requiredClicks: number | null; // G
   readonly ctr: number | null; // H
   readonly impressions: number; // I
+  /** Impressions that carry the Nova fee = impressions × the campaign's Nova %. */
+  readonly novaImpressions: number;
+  readonly nonNovaImpressions: number;
+  /** The campaign's Nova % (head row only; the sheet cell is editable). */
+  readonly novaShare: number | null;
   readonly impressionsNeeded: number | null; // J
   readonly impressionsTotal: number | null; // K
   readonly mediaCost: number; // L
@@ -89,13 +94,13 @@ export function campaignHealth(
 }
 
 /**
- * Margin on clicks already delivered: (clicks × CPC − media − FS fee − Nova fee on impressions spent) ÷ (clicks × CPC).
+ * Margin on clicks already delivered: (clicks × CPC − media − FS fee − Nova fee on Nova impressions) ÷ (clicks × CPC).
  * Blank when there are no clicks yet.
  */
-export function ioMargin(clicks: number, mediaCost: number, impressions: number, config: Pick<AcmConfig, 'clientCpc' | 'fsRate' | 'novaCpm'>): number | null {
+export function ioMargin(clicks: number, mediaCost: number, novaImpressions: number, config: Pick<AcmConfig, 'clientCpc' | 'fsRate' | 'novaCpm'>): number | null {
   const revenue = clicks * config.clientCpc;
   if (revenue <= 0) return null;
-  return (revenue - mediaCost * (1 + config.fsRate) - (impressions / 1000) * config.novaCpm) / revenue;
+  return (revenue - mediaCost * (1 + config.fsRate) - (novaImpressions / 1000) * config.novaCpm) / revenue;
 }
 
 /** Remaining days: MAX(0, ROUNDUP(end − TODAY())). */
@@ -182,7 +187,10 @@ export function calculateAcm(input: ModuleInput, config: AcmConfig): AcmResult {
       const K = J == null ? null : I + J;
       const M = L * config.fsRate;
       // Money: the clicks still to come are costed once, on the last IO; earlier IOs count what they have spent.
-      const N = d.isLatest ? (K == null ? null : (K / 1000) * config.novaCpm) : (I / 1000) * config.novaCpm;
+      // Nova fee on Nova impressions only (impressions × Nova %; default 100%, Nov 2026).
+      const share = config.novaShare;
+      const novaImpr = I * share;
+      const N = d.isLatest ? (K == null ? null : ((K * share) / 1000) * config.novaCpm) : (novaImpr / 1000) * config.novaCpm;
       const O = d.isChild || D == null ? null : D * config.clientCpc;
       const U = d.isLatest ? (I > 0 && K != null ? (L / I) * K : L) : L;
 
@@ -203,6 +211,9 @@ export function calculateAcm(input: ModuleInput, config: AcmConfig): AcmResult {
         requiredClicks: G,
         ctr: H,
         impressions: I,
+        novaImpressions: novaImpr,
+        nonNovaImpressions: I - novaImpr,
+        novaShare: d.indexInGroup === 0 ? share : null,
         impressionsNeeded: J,
         impressionsTotal: K,
         mediaCost: L,
@@ -225,7 +236,7 @@ export function calculateAcm(input: ModuleInput, config: AcmConfig): AcmResult {
     const overall = ioMargin(
       sumBlanks(partial.map((r) => r.achievedClicks)),
       sumBlanks(partial.map((r) => r.mediaCost)),
-      sumBlanks(partial.map((r) => r.impressions)),
+      sumBlanks(partial.map((r) => r.novaImpressions)),
       config,
     );
     const rows: AcmRow[] = partial.map((r) => {
@@ -239,7 +250,7 @@ export function calculateAcm(input: ModuleInput, config: AcmConfig): AcmResult {
         margin: P == null || O == null ? null : P / O,
         projectedNetProfit: V,
         projectedMargin: V == null || O == null ? null : V / O,
-        ioMargin: ioMargin(r.achievedClicks, r.mediaCost, r.impressions, config),
+        ioMargin: ioMargin(r.achievedClicks, r.mediaCost, r.novaImpressions, config),
         overallMargin: r.isHead ? overall : null,
       };
     });
